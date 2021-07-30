@@ -10,7 +10,6 @@ def cfunc(name, dll, result, *args):
     for arg in args:
         atypes.append(arg[1])
         aflags.append((arg[2], arg[0]) + arg[3:])
-    print(result, *atypes)
     return CFUNCTYPE(result, *atypes)((name, dll), tuple(aflags))
 
 dll = None
@@ -191,7 +190,7 @@ def Synth(text, position=0, position_type=POS_CHARACTER, end_position=0, flags=0
     return cSynth(text, len(text)*10, position, position_type, end_position, flags, None, user_data)
 
 cSynth = cfunc('espeak_Synth', dll, c_int,
-              ('text', c_char_p, 1),
+              ('text', c_void_p, 1),
               ('size', c_long, 1),
               ('position', c_uint, 1, 0),
               ('position_type', c_int, 1, POS_CHARACTER),
@@ -489,6 +488,6 @@ if __name__ == '__main__':
     uid = c_uint(0)
     #print 'pitch=',GetParameter(PITCH)
     #SetParameter(PITCH, 50, 0)
-    print(Synth(s))
+    print(Synth(s, end_position=len(s)-2))
     while IsPlaying():
         time.sleep(0.1)

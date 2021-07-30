@@ -1,9 +1,11 @@
 import numpy as np  # numpy - manipulate the packet data returned by depthai
 import cv2  # opencv - display the video stream
 import depthai  # depthai - access the camera and its data packets
-import blobconverter  # blobconverter - compile and download MyriadX neural network blobs
-import pyttsx3
-engine = pyttsx3.init() # object creation
+
+# import pyttsx3
+# engine = pyttsx3.init() # object creation
+from espeakng import ESpeakNG
+esng = ESpeakNG()
 classes = ["bus front", "bus rear", "bus route", "bus side", "front door", "rear door"]
 
 # creating a pipeline
@@ -37,7 +39,6 @@ def frameNorm(frame, bbox):
     normVals[::2] = frame.shape[1]
     return (np.clip(np.array(bbox), 0, 1) * normVals).astype(int)
 
-engine.startLoop(False)
 with depthai.Device(pipeline) as device:
     q_rgb = device.getOutputQueue("rgb")
     q_nn = device.getOutputQueue("nn")
@@ -64,10 +65,7 @@ with depthai.Device(pipeline) as device:
                 cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (255, 0, 0), 2)
                 print(detection.label, detection.confidence, detection.xmin, detection.xmax, detection.ymin, detection.ymax)
                 #TODO find depth and locate distance and orientation
-                if not engine.isBusy:
-                    engine.say(classes[detection.label])
-                    engine.iterate()
+                #if not engine.isBusy:
+                esng.say(detection.label)
                 
             cv2.imshow("preview", frame)
-
-engine.endLoop()

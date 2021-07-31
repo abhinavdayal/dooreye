@@ -223,6 +223,7 @@ with dai.Device(pipeline) as device:
 #                 # out = subprocess.Popen(['pacmd', 'list-sink-inputs', '|' , 'grep', '-c', "'state: RUNNING'"], 
 #                 #                         stdout=subprocess.PIPE, 
 #                 #                         stderr=subprocess.STDOUT)
+#out = subprocess.Popen(['pactl', 'list', '|', 'grep', '"State: RUNNING"'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 #                 # stdout, stderr = out.communicate()
 #                 # if stdout==0:
 #                 #     cmd = f'pico2wave -w speech.wav "{detection.label}" | aplay'

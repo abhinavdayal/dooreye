@@ -9,6 +9,7 @@ import time
 import argparse
 import subprocess
 import os
+from deduplicator import findunique
 
 labelMap = ["NONE", "bus front", "bus rear", "bus route", "bus side", "front door", "rear door"]
 
@@ -38,16 +39,21 @@ trackerOut = pipeline.createXLinkOut()
 xoutRgb.setStreamName("preview")
 trackerOut.setStreamName("tracklets")
 
+FPS = 5
+
 # Properties
 camRgb.setPreviewSize(300, 300)
 camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
 camRgb.setInterleaved(False)
 camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
+camRgb.setFps(FPS)
 
 monoLeft.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
 monoLeft.setBoardSocket(dai.CameraBoardSocket.LEFT)
 monoRight.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
 monoRight.setBoardSocket(dai.CameraBoardSocket.RIGHT)
+monoLeft.setFps(FPS)
+monoRight.setFps(FPS)
 
 # setting node configs
 stereo.initialConfig.setConfidenceThreshold(255)
@@ -73,7 +79,7 @@ camRgb.preview.link(spatialDetectionNetwork.input)
 objectTracker.passthroughTrackerFrame.link(xoutRgb.input)
 objectTracker.out.link(trackerOut.input)
 
-if fullFrameTracking:
+if fullFrameTracking: # better keep it false
     camRgb.setPreviewKeepAspectRatio(False)
     camRgb.video.link(objectTracker.inputTrackerFrame)
     objectTracker.inputTrackerFrame.setBlocking(False)
@@ -86,56 +92,6 @@ spatialDetectionNetwork.passthrough.link(objectTracker.inputDetectionFrame)
 spatialDetectionNetwork.out.link(objectTracker.inputDetections)
 stereo.depth.link(spatialDetectionNetwork.inputDepth)
 
-def getDoorMesage(coords):
-    horiz = "left" if coords.x<100 else "right" if coords.x>100 else None
-    if horiz:
-        return f"Bus door is located {round(coords.z/40)} steps to your front and about {round(coords.x/40)} steps to your {horiz}."
-    else:
-        return f"Bus door is located {round(coords.z/40)} steps to your front."
-
-def getBusMessage(coords):
-    pass
-
-def area(roi):
-    return (roi[2]-roi[0])*(roi[3]-roi[1])
-
-def common(detections, i, j):
-    r1 = detections[i]
-    r2 = detections[j]
-    s1 = (r1["roi"].topLeft().x, r1["roi"].topLeft().y, r1["roi"].bottomRight().x, r1["roi"].bottomRight().y)
-    s2 = (r2["roi"].topLeft().x, r2["roi"].topLeft().y, r2["roi"].bottomRight().x, r2["roi"].bottomRight().y)
-    print("S1, S2 = ", s1, s2)
-    a1 = area(s1)
-    a2 = area(s2)
-    roi = ( max(s1[0], s2[0]), max(s1[1], s2[1]), min(s1[2], s2[2]), min(s1[3], s2[3]) )
-    a3 = area(roi)
-
-    threshold = 0.8
-    print("a1,a2,a3 = ", i, j, a1, a2, a3, a3/a1, a3/a2)
-    if a3/a1 > threshold and a3/a2 > threshold:
-        return i if a1>a2 else j
-    else:
-        return None
-
-    
-
-def findunique(detections):
-    l = len(detections)
-    if l==1:
-        return
-    indexes = list(range(l))
-    print(l, indexes)
-    for i in range(l):
-        for j in range(i+1, l):
-            if indexes[i] == indexes[j]:
-                continue
-            r = common(detections, i, j) 
-            if r is not None:
-                print(f"{i} and {j} are overlapping")
-                indexes[j] = r
-                indexes[i] = r
-    print(indexes)
-    return [detections[i] for i in set(indexes)]
 
 # Connect to device and start pipeline
 with dai.Device(pipeline) as device:
@@ -163,46 +119,43 @@ with dai.Device(pipeline) as device:
         trackletsData = track.tracklets
         detections = findunique([{
             "label": t.label, 
+            "status": t.status.name, 
             "roi": t.roi.denormalize(frame.shape[1], frame.shape[0]), 
             "x":int(t.spatialCoordinates.x), 
             "y":int(t.spatialCoordinates.y), 
             "z":int(t.spatialCoordinates.z), 
             "id":t.id} 
-            for t in trackletsData if t.status.name!='LOST'])
+            for t in trackletsData if t.status.name in ['NEW', 'TRACKED']])
 
         
         #print(detections)
-        if not detections:
-            continue
-        for d in detections:
-            roi = d["roi"]#.denormalize(frame.shape[1], frame.shape[0])
-            x1 = int(roi.topLeft().x)
-            y1 = int(roi.topLeft().y)
-            x2 = int(roi.bottomRight().x)
-            y2 = int(roi.bottomRight().y)
+        if detections:
+            for d in detections:
+                roi = d["roi"]#.denormalize(frame.shape[1], frame.shape[0])
+                x1 = int(roi.topLeft().x)
+                y1 = int(roi.topLeft().y)
+                x2 = int(roi.bottomRight().x)
+                y2 = int(roi.bottomRight().y)
 
-            try:
-                label = labelMap[d["label"]]
-            except:
-                label = d["label"]
+                try:
+                    label = labelMap[d["label"]]
+                except:
+                    label = d["label"]
 
-            lcolor = (0,255,0)
-            lscale = 0.3
+                lcolor = (0,255,0)
+                lscale = 0.3
 
-            cv2.putText(frame, str(label), (x1 + 10, y1 + 10), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
-            cv2.putText(frame, f"ID: {d['id']}", (x1 + 10, y1 + 50), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
-            #cv2.putText(frame, t.status.name, (x1 + 10, y1 + 50), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
-            cv2.rectangle(frame, (x1, y1), (x2, y2), color, cv2.FONT_HERSHEY_SIMPLEX)
+                cv2.putText(frame, str(label), (x1 + 10, y1 + 10), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+                cv2.putText(frame, f"ID: {d['id']}", (x1 + 10, y1 + 50), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+                cv2.putText(frame, d["status"], (x1 + 10, y1 + 60), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+                cv2.rectangle(frame, (x1, y1), (x2, y2), color, cv2.FONT_HERSHEY_SIMPLEX)
 
-            cv2.putText(frame, f"X: {d['x']/10} cm", (x1 + 10, y1 + 20), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
-            cv2.putText(frame, f"Y: {d['y']/10} cm", (x1 + 10, y1 + 30), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
-            cv2.putText(frame, f"Z: {d['z']/10} cm", (x1 + 10, y1 + 40), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+                cv2.putText(frame, f"X: {d['x']/10} cm", (x1 + 10, y1 + 20), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+                cv2.putText(frame, f"Y: {d['y']/10} cm", (x1 + 10, y1 + 30), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+                cv2.putText(frame, f"Z: {d['z']/10} cm", (x1 + 10, y1 + 40), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
 
-            #detections.append({"label": t.label, "x":t.spatialCoordinates.x, "y":t.spatialCoordinates.y, "z":t.spatialCoordinates.z})
-
-            
-            #cmd = f'pico2wave -w speech.wav "{str(label)} is located 10 centimeter to your left and 100 centimeter in front" | aplay'
-            #os.system(cmd)
+                #cmd = f'pico2wave -w speech.wav "{str(label)} is located 10 centimeter to your left and 100 centimeter in front" | aplay'
+                #os.system(cmd)
 
         cv2.putText(frame, "NN fps: {:.2f}".format(fps), (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color)
 

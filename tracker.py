@@ -11,7 +11,7 @@ import subprocess
 import os
 from deduplicator import findunique
 
-labelMap = ["NONE", "bus front", "bus rear", "bus route", "bus side", "front door", "rear door"]
+labelMap = ["NONE", "bus", "front door", "rear door", "route"]
 
 nnPathDefault = str((Path(__file__).parent / Path('nn/custom_mobilenet/frozen_inference_graph.blob')).resolve().absolute())
 parser = argparse.ArgumentParser()
@@ -42,7 +42,7 @@ trackerOut.setStreamName("tracklets")
 FPS = 5
 
 # Properties
-camRgb.setPreviewSize(300, 300)
+camRgb.setPreviewSize(180, 180)
 camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
 camRgb.setInterleaved(False)
 camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)

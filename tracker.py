@@ -97,7 +97,8 @@ def run(pipeline, input_width, input_height, FPS, bd=None):
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
         out = cv2.VideoWriter('output.avi', fourcc, 20.0, (input_width, input_height))
         out.set(cv2.CAP_PROP_FPS, FPS)
-        logger.info(f"Bluedot = {bd.is_pressed}")
+        if bd is not None:
+            logger.info(f"Bluedot pressed = {bd.is_pressed}, Bluedot connected = {bd.is_connected}, Bluedot running = {bd.running}")
         while bd.is_pressed if bd else True:
             imgFrame = preview.get()
             track = tracklets.get()

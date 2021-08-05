@@ -14,13 +14,7 @@ from deduplicator import findunique
 labelMap = ["NONE", "bus", "front door", "rear door", "route"]
 
 
-FPS = 30
-
-# Properties
-input_width = 300
-input_height = 300
-
-def setupPipeline(nnPath, fullFrameTracking):
+def setupPipeline(nnPath, fullFrameTracking, input_width, input_height, FPS):
     # Create pipeline
     pipeline = dai.Pipeline()
 
@@ -91,7 +85,7 @@ def setupPipeline(nnPath, fullFrameTracking):
 
     return pipeline
 
-def run(pipeline, bd):
+def run(pipeline, input_width, input_height, FPS, bd):
     # Connect to device and start pipeline
     with dai.Device(pipeline) as device:
 

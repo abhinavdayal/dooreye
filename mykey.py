@@ -1,4 +1,3 @@
-from bluedot import BlueDot
 from signal import pause
 from logger import logger
 import argparse
@@ -28,25 +27,13 @@ pipeline = tracker.setupPipeline(nnPath, fullFrameTracking, input_width, input_h
 # clean the run
 os.system("rm run/*")
 
-def onBluetoothConnect():
-    logger.info("Door Eye Armed")
+class KB:
+    def __init__(self):
+        pass
 
-def onBluetoothDisconnect():
-    logger.info("Door Eye Disarmed")
+    @property
+    def is_pressed(self):
+        return True
 
-bd = BlueDot(print_messages=True)
-
-bd.set_when_client_connects(onBluetoothConnect)
-bd.set_when_client_disconnects(onBluetoothDisconnect)
-
-def start_dai():
-    logger.info("starting to capture")
-    tracker.run(pipeline, input_width, input_height, fps, bd)
-
-def stop_dai():
-    logger.info("goodbye")
-
-bd.when_pressed = start_dai
-bd.when_released = stop_dai
-
-pause()
+kb = KB()
+tracker.run(pipeline, input_width, input_height, fps, kb)

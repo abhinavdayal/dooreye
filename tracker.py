@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # https://raw.githubusercontent.com/luxonis/depthai-python/main/examples/spatial_object_tracker.py
 # Copied from the above link and modified by Abhinav Dayal
-from pathlib import Path
+
 import cv2
 import depthai as dai
 import numpy as np
@@ -11,37 +11,8 @@ import subprocess
 import os
 from deduplicator import findunique
 
-from bluedot import BlueDot
-bd = BlueDot()
-
-
 labelMap = ["NONE", "bus", "front door", "rear door", "route"]
 
-nnPathDefault = str((Path(__file__).parent / Path('nn/custom_mobilenet/frozen_inference_graph.blob')).resolve().absolute())
-parser = argparse.ArgumentParser()
-parser.add_argument('nnPath', nargs='?', help="Path to mobilenet detection network blob", default=nnPathDefault)
-parser.add_argument('-ff', '--full_frame', action="store_true", help="Perform tracking on full RGB frame", default=False)
-
-args = parser.parse_args()
-
-fullFrameTracking = args.full_frame
-
-# Create pipeline
-pipeline = dai.Pipeline()
-
-# Define sources and outputs
-camRgb = pipeline.createColorCamera()
-spatialDetectionNetwork = pipeline.createMobileNetSpatialDetectionNetwork()
-monoLeft = pipeline.createMonoCamera()
-monoRight = pipeline.createMonoCamera()
-stereo = pipeline.createStereoDepth()
-objectTracker = pipeline.createObjectTracker()
-
-xoutRgb = pipeline.createXLinkOut()
-trackerOut = pipeline.createXLinkOut()
-
-xoutRgb.setStreamName("preview")
-trackerOut.setStreamName("tracklets")
 
 FPS = 30
 
@@ -49,139 +20,155 @@ FPS = 30
 input_width = 300
 input_height = 300
 
-camRgb.setPreviewSize(input_width, input_height)
-camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
-camRgb.setInterleaved(False)
-camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
-camRgb.setFps(FPS)
+def setupPipeline(nnPath, fullFrameTracking):
+    # Create pipeline
+    pipeline = dai.Pipeline()
 
-monoLeft.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
-monoLeft.setBoardSocket(dai.CameraBoardSocket.LEFT)
-monoRight.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
-monoRight.setBoardSocket(dai.CameraBoardSocket.RIGHT)
-monoLeft.setFps(FPS)
-monoRight.setFps(FPS)
+    # Define sources and outputs
+    camRgb = pipeline.createColorCamera()
+    spatialDetectionNetwork = pipeline.createMobileNetSpatialDetectionNetwork()
+    monoLeft = pipeline.createMonoCamera()
+    monoRight = pipeline.createMonoCamera()
+    stereo = pipeline.createStereoDepth()
+    objectTracker = pipeline.createObjectTracker()
 
-# setting node configs
-stereo.initialConfig.setConfidenceThreshold(255)
+    xoutRgb = pipeline.createXLinkOut()
+    trackerOut = pipeline.createXLinkOut()
 
-spatialDetectionNetwork.setBlobPath(args.nnPath)
-spatialDetectionNetwork.setConfidenceThreshold(0.5)
-spatialDetectionNetwork.input.setBlocking(False)
-spatialDetectionNetwork.setBoundingBoxScaleFactor(0.5)
-spatialDetectionNetwork.setDepthLowerThreshold(100)
-spatialDetectionNetwork.setDepthUpperThreshold(5000)
+    xoutRgb.setStreamName("preview")
+    trackerOut.setStreamName("tracklets")
 
-objectTracker.setDetectionLabelsToTrack([1,2,3,4, 5, 6])  # track only person
-# possible tracking types: ZERO_TERM_COLOR_HISTOGRAM, ZERO_TERM_IMAGELESS
-objectTracker.setTrackerType(dai.TrackerType.ZERO_TERM_COLOR_HISTOGRAM)
-# take the smallest ID when new object is tracked, possible options: SMALLEST_ID, UNIQUE_ID
-objectTracker.setTrackerIdAssigmentPolicy(dai.TrackerIdAssigmentPolicy.SMALLEST_ID)
 
-# Linking
-monoLeft.out.link(stereo.left)
-monoRight.out.link(stereo.right)
+    camRgb.setPreviewSize(input_width, input_height)
+    camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
+    camRgb.setInterleaved(False)
+    camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
+    camRgb.setFps(FPS)
 
-camRgb.preview.link(spatialDetectionNetwork.input)
-objectTracker.passthroughTrackerFrame.link(xoutRgb.input)
-objectTracker.out.link(trackerOut.input)
+    monoLeft.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
+    monoLeft.setBoardSocket(dai.CameraBoardSocket.LEFT)
+    monoRight.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
+    monoRight.setBoardSocket(dai.CameraBoardSocket.RIGHT)
+    monoLeft.setFps(FPS)
+    monoRight.setFps(FPS)
 
-if fullFrameTracking: # better keep it false
-    camRgb.setPreviewKeepAspectRatio(False)
-    camRgb.video.link(objectTracker.inputTrackerFrame)
-    objectTracker.inputTrackerFrame.setBlocking(False)
-    # do not block the pipeline if it's too slow on full frame
-    objectTracker.inputTrackerFrame.setQueueSize(2)
-else:
-    spatialDetectionNetwork.passthrough.link(objectTracker.inputTrackerFrame)
+    # setting node configs
+    stereo.initialConfig.setConfidenceThreshold(255)
 
-spatialDetectionNetwork.passthrough.link(objectTracker.inputDetectionFrame)
-spatialDetectionNetwork.out.link(objectTracker.inputDetections)
-stereo.depth.link(spatialDetectionNetwork.inputDepth)
+    spatialDetectionNetwork.setBlobPath(nnPath)
+    spatialDetectionNetwork.setConfidenceThreshold(0.5)
+    spatialDetectionNetwork.input.setBlocking(False)
+    spatialDetectionNetwork.setBoundingBoxScaleFactor(0.5)
+    spatialDetectionNetwork.setDepthLowerThreshold(100)
+    spatialDetectionNetwork.setDepthUpperThreshold(5000)
 
-# clean the run
-os.system("rm run/*")
+    objectTracker.setDetectionLabelsToTrack([1,2,3,4, 5, 6])  # track only person
+    # possible tracking types: ZERO_TERM_COLOR_HISTOGRAM, ZERO_TERM_IMAGELESS
+    objectTracker.setTrackerType(dai.TrackerType.ZERO_TERM_COLOR_HISTOGRAM)
+    # take the smallest ID when new object is tracked, possible options: SMALLEST_ID, UNIQUE_ID
+    objectTracker.setTrackerIdAssigmentPolicy(dai.TrackerIdAssigmentPolicy.SMALLEST_ID)
 
-bd.wait_for_press()
-print("You pressed the blue dot!")
+    # Linking
+    monoLeft.out.link(stereo.left)
+    monoRight.out.link(stereo.right)
 
-# Connect to device and start pipeline
-with dai.Device(pipeline) as device:
+    camRgb.preview.link(spatialDetectionNetwork.input)
+    objectTracker.passthroughTrackerFrame.link(xoutRgb.input)
+    objectTracker.out.link(trackerOut.input)
 
-    preview = device.getOutputQueue("preview", 4, False)
-    tracklets = device.getOutputQueue("tracklets", 4, False)
+    if fullFrameTracking: # better keep it false
+        camRgb.setPreviewKeepAspectRatio(False)
+        camRgb.video.link(objectTracker.inputTrackerFrame)
+        objectTracker.inputTrackerFrame.setBlocking(False)
+        # do not block the pipeline if it's too slow on full frame
+        objectTracker.inputTrackerFrame.setQueueSize(2)
+    else:
+        spatialDetectionNetwork.passthrough.link(objectTracker.inputTrackerFrame)
 
-    startTime = time.monotonic()
-    counter = 0
-    fps = 0
-    color = (255, 255, 255)
+    spatialDetectionNetwork.passthrough.link(objectTracker.inputDetectionFrame)
+    spatialDetectionNetwork.out.link(objectTracker.inputDetections)
+    stereo.depth.link(spatialDetectionNetwork.inputDepth)
 
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter('output.avi', fourcc, 20.0, (input_width, input_height))
-    out.set(cv2.CAP_PROP_FPS, FPS)
+    return pipeline
 
-    while(True):
-        imgFrame = preview.get()
-        track = tracklets.get()
+def run(pipeline, bd):
+    # Connect to device and start pipeline
+    with dai.Device(pipeline) as device:
 
-        counter+=1
-        current_time = time.monotonic()
-        if (current_time - startTime) > 1 :
-            fps = counter / (current_time - startTime)
-            counter = 0
-            startTime = current_time
+        preview = device.getOutputQueue("preview", 4, False)
+        tracklets = device.getOutputQueue("tracklets", 4, False)
 
-        frame = imgFrame.getCvFrame()
-        trackletsData = track.tracklets
-        detections = findunique([{
-            "label": t.label, 
-            "status": t.status.name, 
-            "roi": t.roi.denormalize(frame.shape[1], frame.shape[0]), 
-            "x":int(t.spatialCoordinates.x), 
-            "y":int(t.spatialCoordinates.y), 
-            "z":int(t.spatialCoordinates.z), 
-            "id":t.id} 
-            for t in trackletsData if t.status.name in ['NEW', 'TRACKED']])
+        startTime = time.monotonic()
+        counter = 0
+        fps = 0
+        color = (255, 255, 255)
 
-        
-        #print(detections)
-        if detections:
-            for d in detections:
-                roi = d["roi"]#.denormalize(frame.shape[1], frame.shape[0])
-                x1 = int(roi.topLeft().x)
-                y1 = int(roi.topLeft().y)
-                x2 = int(roi.bottomRight().x)
-                y2 = int(roi.bottomRight().y)
+        fourcc = cv2.VideoWriter_fourcc(*'XVID')
+        out = cv2.VideoWriter('output.avi', fourcc, 20.0, (input_width, input_height))
+        out.set(cv2.CAP_PROP_FPS, FPS)
 
-                try:
-                    label = labelMap[d["label"]]
-                except:
-                    label = d["label"]
+        while(bd.is_pressed):
+            imgFrame = preview.get()
+            track = tracklets.get()
 
-                lcolor = (0,255,0)
-                lscale = 0.3
+            counter+=1
+            current_time = time.monotonic()
+            if (current_time - startTime) > 1 :
+                fps = counter / (current_time - startTime)
+                counter = 0
+                startTime = current_time
 
-                cv2.putText(frame, str(label), (x1 + 10, y1 + 10), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
-                cv2.putText(frame, f"ID: {d['id']}", (x1 + 10, y1 + 50), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
-                cv2.putText(frame, d["status"], (x1 + 10, y1 + 60), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
-                cv2.rectangle(frame, (x1, y1), (x2, y2), color, cv2.FONT_HERSHEY_SIMPLEX)
+            frame = imgFrame.getCvFrame()
+            trackletsData = track.tracklets
+            detections = findunique([{
+                "label": t.label, 
+                "status": t.status.name, 
+                "roi": t.roi.denormalize(frame.shape[1], frame.shape[0]), 
+                "x":int(t.spatialCoordinates.x), 
+                "y":int(t.spatialCoordinates.y), 
+                "z":int(t.spatialCoordinates.z), 
+                "id":t.id} 
+                for t in trackletsData if t.status.name in ['NEW', 'TRACKED']])
 
-                cv2.putText(frame, f"X: {d['x']/10} cm", (x1 + 10, y1 + 20), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
-                cv2.putText(frame, f"Y: {d['y']/10} cm", (x1 + 10, y1 + 30), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
-                cv2.putText(frame, f"Z: {d['z']/10} cm", (x1 + 10, y1 + 40), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+            
+            #print(detections)
+            if detections:
+                for d in detections:
+                    roi = d["roi"]#.denormalize(frame.shape[1], frame.shape[0])
+                    x1 = int(roi.topLeft().x)
+                    y1 = int(roi.topLeft().y)
+                    x2 = int(roi.bottomRight().x)
+                    y2 = int(roi.bottomRight().y)
 
-                #cmd = f'pico2wave -w speech.wav "{str(label)} is located 10 centimeter to your left and 100 centimeter in front" | aplay'
-                #os.system(cmd)
+                    try:
+                        label = labelMap[d["label"]]
+                    except:
+                        label = d["label"]
 
-        cv2.putText(frame, "NN fps: {:.2f}".format(fps), (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color)
+                    lcolor = (0,255,0)
+                    lscale = 0.3
 
-        cv2.imshow("tracker", frame)
-        
-        # output the frame
-        out.write(frame)
+                    cv2.putText(frame, str(label), (x1 + 10, y1 + 10), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+                    cv2.putText(frame, f"ID: {d['id']}", (x1 + 10, y1 + 50), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+                    cv2.putText(frame, d["status"], (x1 + 10, y1 + 60), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), color, cv2.FONT_HERSHEY_SIMPLEX)
 
-        if cv2.waitKey(1) == ord('q'):
-            break
+                    cv2.putText(frame, f"X: {d['x']/10} cm", (x1 + 10, y1 + 20), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+                    cv2.putText(frame, f"Y: {d['y']/10} cm", (x1 + 10, y1 + 30), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+                    cv2.putText(frame, f"Z: {d['z']/10} cm", (x1 + 10, y1 + 40), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
 
-    # After we release our webcam, we also release the output
-    out.release() 
+                    #cmd = f'pico2wave -w speech.wav "{str(label)} is located 10 centimeter to your left and 100 centimeter in front" | aplay'
+                    #os.system(cmd)
+
+            cv2.putText(frame, "NN fps: {:.2f}".format(fps), (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color)
+
+            cv2.imshow("tracker", frame)
+            
+            # output the frame
+            out.write(frame)
+
+            if cv2.waitKey(1) == ord('q'):
+                break
+
+        # After we release our webcam, we also release the output
+        out.release() 

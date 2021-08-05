@@ -19,7 +19,7 @@ class Logger(object, metaclass=Singleton):
     def __init__(self):
         self._logger = logging.getLogger("crumbs")
         self._logger.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(asctime)s \t [%(levelname)s | %(filename)s:%(lineno)s] > %(message)s')
+        formatter = logging.Formatter('%(asctime)-15s [%(levelname)s | %(filename)s:%(lineno)s] > %(message)s')
 
         now = datetime.datetime.now()
         dirname = "./log"

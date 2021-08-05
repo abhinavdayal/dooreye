@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # https://raw.githubusercontent.com/luxonis/depthai-python/main/examples/spatial_object_tracker.py
 # Copied from the above link and modified by Abhinav Dayal
-
+from logger import logger
 import cv2
 import depthai as dai
 #import numpy as np
@@ -97,7 +97,7 @@ def run(pipeline, input_width, input_height, FPS, bd=None):
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
         out = cv2.VideoWriter('output.avi', fourcc, 20.0, (input_width, input_height))
         out.set(cv2.CAP_PROP_FPS, FPS)
-
+        logger.info(f"Bluedot = {bd.is_pressed}")
         while bd.is_pressed if bd else True:
             imgFrame = preview.get()
             track = tracklets.get()
@@ -157,6 +157,7 @@ def run(pipeline, input_width, input_height, FPS, bd=None):
             
             # output the frame
             out.write(frame)
+            logger.info("writing frame")
 
             if cv2.waitKey(1) == ord('q'):
                 break

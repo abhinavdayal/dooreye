@@ -1,11 +1,12 @@
 from bluedot import BlueDot
 from signal import pause
+from logger import logger
 
 def onBluetoothConnect():
-    print("Connected")
+    logger.info("Door Eye Armed")
 
 def onBluetoothDisconnect():
-    print("Disconnected")
+    logger.info("Door Eye Disarmed")
 
 bd = BlueDot(print_messages=True)
 
@@ -13,10 +14,10 @@ bd.set_when_client_connects(onBluetoothConnect)
 bd.set_when_client_disconnects(onBluetoothDisconnect)
 
 def say_hello():
-    print("Hello World")
+    logger.info("Hello World")
 
 def say_goodbye():
-    print("goodbye")
+    logger.info("goodbye")
 
 bd.when_pressed = say_hello
 bd.when_released = say_goodbye

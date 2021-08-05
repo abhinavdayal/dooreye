@@ -2,5 +2,5 @@ numpy
 opencv-python
 depthai
 blobconverter
-python3-dbus
+dbus-python
 bluedot

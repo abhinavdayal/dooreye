@@ -11,6 +11,10 @@ import subprocess
 import os
 from deduplicator import findunique
 
+from bluedot import BlueDot
+bd = BlueDot()
+
+
 labelMap = ["NONE", "bus", "front door", "rear door", "route"]
 
 nnPathDefault = str((Path(__file__).parent / Path('nn/custom_mobilenet/frozen_inference_graph.blob')).resolve().absolute())
@@ -39,10 +43,13 @@ trackerOut = pipeline.createXLinkOut()
 xoutRgb.setStreamName("preview")
 trackerOut.setStreamName("tracklets")
 
-FPS = 5
+FPS = 30
 
 # Properties
-camRgb.setPreviewSize(180, 180)
+input_width = 300
+input_height = 300
+
+camRgb.setPreviewSize(input_width, input_height)
 camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
 camRgb.setInterleaved(False)
 camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
@@ -59,7 +66,7 @@ monoRight.setFps(FPS)
 stereo.initialConfig.setConfidenceThreshold(255)
 
 spatialDetectionNetwork.setBlobPath(args.nnPath)
-spatialDetectionNetwork.setConfidenceThreshold(0.3)
+spatialDetectionNetwork.setConfidenceThreshold(0.5)
 spatialDetectionNetwork.input.setBlocking(False)
 spatialDetectionNetwork.setBoundingBoxScaleFactor(0.5)
 spatialDetectionNetwork.setDepthLowerThreshold(100)
@@ -92,6 +99,11 @@ spatialDetectionNetwork.passthrough.link(objectTracker.inputDetectionFrame)
 spatialDetectionNetwork.out.link(objectTracker.inputDetections)
 stereo.depth.link(spatialDetectionNetwork.inputDepth)
 
+# clean the run
+os.system("rm run/*")
+
+bd.wait_for_press()
+print("You pressed the blue dot!")
 
 # Connect to device and start pipeline
 with dai.Device(pipeline) as device:
@@ -103,6 +115,10 @@ with dai.Device(pipeline) as device:
     counter = 0
     fps = 0
     color = (255, 255, 255)
+
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    out = cv2.VideoWriter('output.avi', fourcc, 20.0, (input_width, input_height))
+    out.set(cv2.CAP_PROP_FPS, FPS)
 
     while(True):
         imgFrame = preview.get()
@@ -160,6 +176,12 @@ with dai.Device(pipeline) as device:
         cv2.putText(frame, "NN fps: {:.2f}".format(fps), (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color)
 
         cv2.imshow("tracker", frame)
+        
+        # output the frame
+        out.write(frame)
 
         if cv2.waitKey(1) == ord('q'):
             break
+
+    # After we release our webcam, we also release the output
+    out.release() 

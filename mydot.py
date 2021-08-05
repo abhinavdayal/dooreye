@@ -28,27 +28,28 @@ pipeline = tracker.setupPipeline(nnPath, fullFrameTracking, input_width, input_h
 # clean the run
 os.system("rm run/*")
 
+bd = BlueDot(print_messages=True)
+
 def onBluetoothConnect():
+    global bd
     logger.info("Door Eye Armed")
-    #tracker.run(pipeline, input_width, input_height, fps, bd)
+    tracker.run(pipeline, input_width, input_height, fps, bd)
 
 def onBluetoothDisconnect():
     logger.info("Door Eye Disarmed")
 
-bd = BlueDot(print_messages=True)
-
 bd.set_when_client_connects(onBluetoothConnect)
 bd.set_when_client_disconnects(onBluetoothDisconnect)
 
-def start_dai():
-    global bd
-    logger.info("starting to capture")
-    tracker.run(pipeline, input_width, input_height, fps, bd)
+# def start_dai():
+#     global bd
+#     logger.info("starting to capture")
+#     tracker.run(pipeline, input_width, input_height, fps, bd)
 
-def stop_dai():
-    logger.info("goodbye")
+# def stop_dai():
+#     logger.info("goodbye")
 
-bd.when_pressed = start_dai
-bd.when_released = stop_dai
+# bd.when_pressed = start_dai
+# bd.when_released = stop_dai
 
 pause()

@@ -4,11 +4,8 @@
 
 import cv2
 import depthai as dai
-import numpy as np
+#import numpy as np
 import time
-import argparse
-import subprocess
-import os
 from deduplicator import findunique
 
 labelMap = ["NONE", "bus", "front door", "rear door", "route"]
@@ -85,7 +82,7 @@ def setupPipeline(nnPath, fullFrameTracking, input_width, input_height, FPS):
 
     return pipeline
 
-def run(pipeline, input_width, input_height, FPS, bd):
+def run(pipeline, input_width, input_height, FPS, bd=None):
     # Connect to device and start pipeline
     with dai.Device(pipeline) as device:
 
@@ -101,7 +98,7 @@ def run(pipeline, input_width, input_height, FPS, bd):
         out = cv2.VideoWriter('output.avi', fourcc, 20.0, (input_width, input_height))
         out.set(cv2.CAP_PROP_FPS, FPS)
 
-        while(bd.is_pressed):
+        while bd.is_pressed if bd else True:
             imgFrame = preview.get()
             track = tracklets.get()
 
@@ -166,3 +163,14 @@ def run(pipeline, input_width, input_height, FPS, bd):
 
         # After we release our webcam, we also release the output
         out.release() 
+
+if __name__ == "__main__":
+    from pathlib import Path
+    nnPath = str((Path(__file__).parent / Path('nn/custom_mobilenet/frozen_inference_graph.blob')).resolve().absolute())
+    fps = 30
+    input_width = 300
+    input_height = 300
+    fullFrameTracking = False
+
+    pipeline = setupPipeline(nnPath, fullFrameTracking, input_width, input_height, fps)
+    run(pipeline, input_width, input_height, fps)

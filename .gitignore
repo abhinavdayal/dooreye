@@ -2,3 +2,4 @@ venv/
 speech.wav
 log/
 run/
+*.py[co]

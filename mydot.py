@@ -30,6 +30,7 @@ os.system("rm run/*")
 
 def onBluetoothConnect():
     logger.info("Door Eye Armed")
+    #tracker.run(pipeline, input_width, input_height, fps, bd)
 
 def onBluetoothDisconnect():
     logger.info("Door Eye Disarmed")
@@ -40,6 +41,7 @@ bd.set_when_client_connects(onBluetoothConnect)
 bd.set_when_client_disconnects(onBluetoothDisconnect)
 
 def start_dai():
+    global bd
     logger.info("starting to capture")
     tracker.run(pipeline, input_width, input_height, fps, bd)
 

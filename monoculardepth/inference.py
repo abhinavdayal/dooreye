@@ -19,6 +19,8 @@ import numpy as np
 from . import network
 from tensorflow.python.util import deprecation
 import os
+import warnings
+warnings.filterwarnings("ignore", message=r"Passing", category=FutureWarning)
 
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"

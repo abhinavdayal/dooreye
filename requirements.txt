@@ -4,7 +4,7 @@ depthai
 blobconverter
 dbus-python
 bluedot
-tensorflow==1.15.0
+tensorflow==1.14.0
 Pillow
 matplotlib
 tf2onnx==1.5.6

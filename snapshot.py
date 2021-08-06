@@ -33,7 +33,7 @@ def snapshot():
     imgFrame = preview.get()
     frame = imgFrame.getCvFrame()
     filenum += 1
-    logger.info("Saving {filenum}.png to snaps")
+    logger.info(f"Saving {filenum}.png to snaps")
     cv2.imwrite(f"./snaps/{filenum}.png", frame)
 
 

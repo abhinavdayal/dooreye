@@ -182,7 +182,7 @@ def run(pipeline, input_width, input_height, FPS, outfilecnt=0, bd=None):
                     #cmd = f'pico2wave -w speech.wav "{str(label)} is located 10 centimeter to your left and 100 centimeter in front" | aplay'
                     #os.system(cmd)
 
-            cv2.putText(frame, "NN fps: {:.2f}".format(fps), (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color)
+            cv2.putText(frame, "F: {:d}, fps: {:.2f}".format(fcounter, fps), (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color)
             #display = cv2.hconcat([frame, displaydepth])
             #cv2.imshow("tracker", display)
             cv2.imshow("tracker", frame)

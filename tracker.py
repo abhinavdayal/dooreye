@@ -149,7 +149,7 @@ def run(pipeline, input_width, input_height, FPS, outfilecnt=0, bd=None):
                         label = d["label"]
 
                     lcolor = (0,255,0)
-                    lscale = 0.3
+                    lscale = 0.4
 
                     cv2.putText(frame, str(label).upper(), (x1 + 10, y1 + 10), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
                     cv2.putText(frame, f"ID: {d['id']}", (x1 + 10, y1 + 60), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)

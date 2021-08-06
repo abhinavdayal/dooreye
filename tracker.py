@@ -6,6 +6,7 @@ import cv2
 import depthai as dai
 import numpy as np
 import time
+import csv
 from deduplicator import findunique
 #from monoculardepth.inference import MonocularDepth
 
@@ -101,6 +102,10 @@ def run(pipeline, input_width, input_height, FPS, outfilecnt=0, bd=None):
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
         out = cv2.VideoWriter(f'run/output{outfilecnt}.avi', fourcc, FPS, (input_width, input_height))
         out.set(cv2.CAP_PROP_FPS, FPS)
+        csvout = open(f'run/output{outfilecnt}.csv', 'w')
+        csvwriter = csv.writer(csvout)
+        csvwriter.writerow(["frame", "label", "x1", "y1", "x2", "y2", "x", "y", "z", "d"])
+        fcounter = 0
         # if bd is not None:
         #     logger.info(f"Bluedot pressed = {bd.is_pressed}, Bluedot connected = {bd.is_connected}, Bluedot running = {bd.running}")
         while bd.is_connected if bd else True:
@@ -108,6 +113,7 @@ def run(pipeline, input_width, input_height, FPS, outfilecnt=0, bd=None):
             track = tracklets.get()
 
             counter+=1
+            fcounter += 1
             current_time = time.monotonic()
             if (current_time - startTime) > 1 :
                 fps = counter / (current_time - startTime)
@@ -138,9 +144,7 @@ def run(pipeline, input_width, input_height, FPS, outfilecnt=0, bd=None):
                     x2 = int(roi.bottomRight().x)
                     y2 = int(roi.bottomRight().y)
 
-                    p = y2-y1
-                    #print(p)
-                    caliberated_depth = (H*F)/p
+                    
 
 
                     try:
@@ -148,7 +152,7 @@ def run(pipeline, input_width, input_height, FPS, outfilecnt=0, bd=None):
                     except:
                         label = d["label"]
 
-                    lcolor = (0,255,0)
+                    lcolor = color #(0,255,0)
                     lscale = 0.4
 
                     cv2.putText(frame, str(label).upper(), (x1 + 10, y1 + 10), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
@@ -166,7 +170,14 @@ def run(pipeline, input_width, input_height, FPS, outfilecnt=0, bd=None):
                     cv2.putText(frame, f"X: {d['x']/10} cm", (x1 + 10, y1 + 20), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
                     cv2.putText(frame, f"Y: {d['y']/10} cm", (x1 + 10, y1 + 30), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
                     cv2.putText(frame, f"Z: {d['z']/10} cm", (x1 + 10, y1 + 40), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
-                    cv2.putText(frame, f"Distance: {caliberated_depth:0.2f} m", (x1 + 10, y1 + 50), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+                    if d["label"]==1:
+                        p = y2-y1
+                        #print(p)
+                        caliberated_depth = (H*F)/p
+                        cv2.putText(frame, f"Distance: {caliberated_depth:0.2f} m", (x1 + 10, y1 + 50), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+                        csvwriter.writerow([fcounter, str(label).upper(), x1, y1, x2, y2, d['x'], d["y"], d["z"], round(caliberated_depth, 2)])
+                    else:
+                        csvwriter.writerow([fcounter, str(label).upper(), x1, y1, x2, y2, d['x'], d["y"], d["z"], 0])
 
                     #cmd = f'pico2wave -w speech.wav "{str(label)} is located 10 centimeter to your left and 100 centimeter in front" | aplay'
                     #os.system(cmd)
@@ -186,6 +197,7 @@ def run(pipeline, input_width, input_height, FPS, outfilecnt=0, bd=None):
 
         # After we release our webcam, we also release the output
         out.release() 
+        csvout.close()
 
 if __name__ == "__main__":
     from pathlib import Path

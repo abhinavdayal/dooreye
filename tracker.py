@@ -15,7 +15,7 @@ labelMap = ["NONE", "bus", "front door", "rear door", "route"]
 def setupPipeline(nnPath, fullFrameTracking, input_width, input_height, FPS):
     # Create pipeline
     pipeline = dai.Pipeline()
-
+    confidence_threshold = 0.3
     # Define sources and outputs
     camRgb = pipeline.createColorCamera()
     spatialDetectionNetwork = pipeline.createMobileNetSpatialDetectionNetwork()
@@ -48,7 +48,7 @@ def setupPipeline(nnPath, fullFrameTracking, input_width, input_height, FPS):
     stereo.initialConfig.setConfidenceThreshold(255)
 
     spatialDetectionNetwork.setBlobPath(nnPath)
-    spatialDetectionNetwork.setConfidenceThreshold(0.5)
+    spatialDetectionNetwork.setConfidenceThreshold(confidence_threshold)
     spatialDetectionNetwork.input.setBlocking(False)
     spatialDetectionNetwork.setBoundingBoxScaleFactor(0.5)
     spatialDetectionNetwork.setDepthLowerThreshold(100)
@@ -82,6 +82,9 @@ def setupPipeline(nnPath, fullFrameTracking, input_width, input_height, FPS):
     stereo.depth.link(spatialDetectionNetwork.inputDepth)
 
     return pipeline
+
+H = 10
+F = 350
 
 def run(pipeline, input_width, input_height, FPS, bd=None):
     global monocularDepth
@@ -136,6 +139,11 @@ def run(pipeline, input_width, input_height, FPS, bd=None):
                     x2 = int(roi.bottomRight().x)
                     y2 = int(roi.bottomRight().y)
 
+                    p = y2-y1
+                    #print(p)
+                    caliberated_depth = (H*F)/p
+
+
                     try:
                         label = labelMap[d["label"]]
                     except:
@@ -145,8 +153,8 @@ def run(pipeline, input_width, input_height, FPS, bd=None):
                     lscale = 0.3
 
                     cv2.putText(frame, str(label).upper(), (x1 + 10, y1 + 10), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
-                    cv2.putText(frame, f"ID: {d['id']}", (x1 + 10, y1 + 50), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
-                    cv2.putText(frame, d["status"], (x1 + 10, y1 + 60), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+                    cv2.putText(frame, f"ID: {d['id']}", (x1 + 10, y1 + 60), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+                    cv2.putText(frame, d["status"], (x1 + 10, y1 + 70), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
                     cv2.rectangle(frame, (x1, y1), (x2, y2), color, cv2.FONT_HERSHEY_SIMPLEX)
 
                     
@@ -159,6 +167,7 @@ def run(pipeline, input_width, input_height, FPS, bd=None):
                     cv2.putText(frame, f"X: {d['x']/10} cm", (x1 + 10, y1 + 20), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
                     cv2.putText(frame, f"Y: {d['y']/10} cm", (x1 + 10, y1 + 30), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
                     cv2.putText(frame, f"Z: {d['z']/10} cm", (x1 + 10, y1 + 40), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+                    cv2.putText(frame, f"Distance: {caliberated_depth:0.2f} m", (x1 + 10, y1 + 50), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
 
                     #cmd = f'pico2wave -w speech.wav "{str(label)} is located 10 centimeter to your left and 100 centimeter in front" | aplay'
                     #os.system(cmd)

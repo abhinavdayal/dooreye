@@ -4,12 +4,13 @@
 from logger import logger
 import cv2
 import depthai as dai
-#import numpy as np
+import numpy as np
 import time
 from deduplicator import findunique
+from monoculardepth.inference import MonocularDepth
 
 labelMap = ["NONE", "bus", "front door", "rear door", "route"]
-
+monocularDepth = MonocularDepth()
 
 def setupPipeline(nnPath, fullFrameTracking, input_width, input_height, FPS):
     # Create pipeline
@@ -53,11 +54,11 @@ def setupPipeline(nnPath, fullFrameTracking, input_width, input_height, FPS):
     spatialDetectionNetwork.setDepthLowerThreshold(100)
     spatialDetectionNetwork.setDepthUpperThreshold(5000)
 
-    objectTracker.setDetectionLabelsToTrack([1,2,3,4, 5, 6])  # track only person
+    objectTracker.setDetectionLabelsToTrack([1,2,4])
     # possible tracking types: ZERO_TERM_COLOR_HISTOGRAM, ZERO_TERM_IMAGELESS
     objectTracker.setTrackerType(dai.TrackerType.ZERO_TERM_COLOR_HISTOGRAM)
     # take the smallest ID when new object is tracked, possible options: SMALLEST_ID, UNIQUE_ID
-    objectTracker.setTrackerIdAssigmentPolicy(dai.TrackerIdAssigmentPolicy.SMALLEST_ID)
+    objectTracker.setTrackerIdAssigmentPolicy(dai.TrackerIdAssigmentPolicy.UNIQUE_ID)
 
     # Linking
     monoLeft.out.link(stereo.left)
@@ -83,11 +84,12 @@ def setupPipeline(nnPath, fullFrameTracking, input_width, input_height, FPS):
     return pipeline
 
 def run(pipeline, input_width, input_height, FPS, bd=None):
+    global monocularDepth
     # Connect to device and start pipeline
     with dai.Device(pipeline) as device:
 
         preview = device.getOutputQueue("preview", 4, False)
-        tracklets = device.getOutputQueue("tracklets", 4, False)
+        tracklets = device.getOutputQueue("tracklets", 20, False)
 
         startTime = time.monotonic()
         counter = 0
@@ -95,7 +97,7 @@ def run(pipeline, input_width, input_height, FPS, bd=None):
         color = (255, 255, 255)
 
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        out = cv2.VideoWriter('output.avi', fourcc, 20.0, (input_width, input_height))
+        out = cv2.VideoWriter('output.avi', fourcc, FPS, (input_width*2, input_height))
         out.set(cv2.CAP_PROP_FPS, FPS)
         # if bd is not None:
         #     logger.info(f"Bluedot pressed = {bd.is_pressed}, Bluedot connected = {bd.is_connected}, Bluedot running = {bd.running}")
@@ -111,6 +113,8 @@ def run(pipeline, input_width, input_height, FPS, bd=None):
                 startTime = current_time
 
             frame = imgFrame.getCvFrame()
+            monodepth = monocularDepth.run_inference(frame)
+            displaydepth = cv2.applyColorMap(monodepth, cv2.COLORMAP_MAGMA)
             trackletsData = track.tracklets
             detections = findunique([{
                 "label": t.label, 
@@ -140,10 +144,17 @@ def run(pipeline, input_width, input_height, FPS, bd=None):
                     lcolor = (0,255,0)
                     lscale = 0.3
 
-                    cv2.putText(frame, str(label), (x1 + 10, y1 + 10), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+                    cv2.putText(frame, str(label).upper(), (x1 + 10, y1 + 10), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
                     cv2.putText(frame, f"ID: {d['id']}", (x1 + 10, y1 + 50), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
                     cv2.putText(frame, d["status"], (x1 + 10, y1 + 60), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
                     cv2.rectangle(frame, (x1, y1), (x2, y2), color, cv2.FONT_HERSHEY_SIMPLEX)
+
+                    
+                    dval = np.bincount(monodepth[y1:y2, x1:x2].flatten()).argmax()
+                    cv2.putText(displaydepth, str(label).upper(), (x1 + 10, y1 + 10), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+                    cv2.putText(displaydepth, f"ID: {d['id']}", (x1 + 10, y1 + 20), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+                    cv2.putText(displaydepth, f"DVAL: {dval}", (x1 + 10, y1 + 30), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+                    cv2.rectangle(displaydepth, (x1, y1), (x2, y2), color, cv2.FONT_HERSHEY_SIMPLEX)
 
                     cv2.putText(frame, f"X: {d['x']/10} cm", (x1 + 10, y1 + 20), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
                     cv2.putText(frame, f"Y: {d['y']/10} cm", (x1 + 10, y1 + 30), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
@@ -153,12 +164,12 @@ def run(pipeline, input_width, input_height, FPS, bd=None):
                     #os.system(cmd)
 
             cv2.putText(frame, "NN fps: {:.2f}".format(fps), (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color)
-
-            cv2.imshow("tracker", frame)
+            display = cv2.hconcat([frame, displaydepth])
+            cv2.imshow("tracker", display)
             
             # output the frame
-            out.write(frame)
-            logger.info("writing frame")
+            out.write(display)
+            #logger.info("writing frame")
 
             if cv2.waitKey(1) == ord('q'):
                 break
@@ -169,7 +180,7 @@ def run(pipeline, input_width, input_height, FPS, bd=None):
 if __name__ == "__main__":
     from pathlib import Path
     nnPath = str((Path(__file__).parent / Path('nn/custom_mobilenet/frozen_inference_graph.blob')).resolve().absolute())
-    fps = 30
+    fps = 10
     input_width = 300
     input_height = 300
     fullFrameTracking = False

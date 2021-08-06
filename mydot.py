@@ -13,7 +13,7 @@ parser.add_argument('nnPath', nargs='?', help="Path to mobilenet detection netwo
 parser.add_argument('-ff', '--full_frame', action="store_true", help="Perform tracking on full RGB frame", default=False)
 parser.add_argument('-iw', '--input_width', help="input width", default=300)
 parser.add_argument('-ih', '--input_height', help="input height", default=300)
-parser.add_argument('-f', '--fps', help="frame rate", default=30)
+parser.add_argument('-f', '--fps', help="frame rate", default=10)
 
 args = parser.parse_args()
 

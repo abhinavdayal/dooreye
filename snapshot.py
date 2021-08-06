@@ -3,6 +3,7 @@ from signal import pause
 from logger import logger
 
 import cv2
+import os
 import depthai as dai
 
 pipeline = dai.Pipeline()
@@ -24,11 +25,15 @@ camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
 device = dai.Device(pipeline)
 preview = device.getOutputQueue("preview", 4, False)
 filenum = 0
+
+os.system("rm snaps/*")
+
 def snapshot():
     global filenum
     imgFrame = preview.get()
     frame = imgFrame.getCvFrame()
     filenum += 1
+    logger.info("Saving {filenum}.png to snaps")
     cv2.imwrite(f"./snaps/{filenum}.png", frame)
 
 

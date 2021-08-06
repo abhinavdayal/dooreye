@@ -85,9 +85,8 @@ def setupPipeline(nnPath, fullFrameTracking, input_width, input_height, FPS):
 
 H = 10
 F = 350
-
-def run(pipeline, input_width, input_height, FPS, bd=None):
-    global monocularDepth
+def run(pipeline, input_width, input_height, FPS, outfilecnt=0, bd=None):
+    #global monocularDepth
     # Connect to device and start pipeline
     with dai.Device(pipeline) as device:
 
@@ -100,7 +99,7 @@ def run(pipeline, input_width, input_height, FPS, bd=None):
         color = (255, 255, 255)
 
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        out = cv2.VideoWriter('output.avi', fourcc, FPS, (input_width, input_height))
+        out = cv2.VideoWriter(f'run/output{outfilecnt}.avi', fourcc, FPS, (input_width, input_height))
         out.set(cv2.CAP_PROP_FPS, FPS)
         # if bd is not None:
         #     logger.info(f"Bluedot pressed = {bd.is_pressed}, Bluedot connected = {bd.is_connected}, Bluedot running = {bd.running}")

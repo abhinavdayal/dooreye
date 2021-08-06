@@ -29,11 +29,13 @@ pipeline = tracker.setupPipeline(nnPath, fullFrameTracking, input_width, input_h
 os.system("rm run/*")
 
 bd = BlueDot(print_messages=True)
-
+outfilecnt = 0
 def onBluetoothConnect():
     global bd
+    global outfilecnt
     logger.info("Door Eye Armed")
-    tracker.run(pipeline, input_width, input_height, fps, bd)
+    outfilecnt += 1
+    tracker.run(pipeline, input_width, input_height, fps, outfilecnt, bd)
 
 def onBluetoothDisconnect():
     logger.info("Door Eye Disarmed")

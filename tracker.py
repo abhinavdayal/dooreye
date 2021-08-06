@@ -7,10 +7,10 @@ import depthai as dai
 import numpy as np
 import time
 from deduplicator import findunique
-from monoculardepth.inference import MonocularDepth
+#from monoculardepth.inference import MonocularDepth
 
 labelMap = ["NONE", "bus", "front door", "rear door", "route"]
-monocularDepth = MonocularDepth()
+#monocularDepth = MonocularDepth()
 
 def setupPipeline(nnPath, fullFrameTracking, input_width, input_height, FPS):
     # Create pipeline
@@ -113,8 +113,8 @@ def run(pipeline, input_width, input_height, FPS, bd=None):
                 startTime = current_time
 
             frame = imgFrame.getCvFrame()
-            monodepth = monocularDepth.run_inference(frame)
-            displaydepth = cv2.applyColorMap(monodepth, cv2.COLORMAP_MAGMA)
+            #monodepth = monocularDepth.run_inference(frame)
+            #displaydepth = cv2.applyColorMap(monodepth, cv2.COLORMAP_MAGMA)
             trackletsData = track.tracklets
             detections = findunique([{
                 "label": t.label, 
@@ -150,11 +150,11 @@ def run(pipeline, input_width, input_height, FPS, bd=None):
                     cv2.rectangle(frame, (x1, y1), (x2, y2), color, cv2.FONT_HERSHEY_SIMPLEX)
 
                     
-                    dval = np.bincount(monodepth[y1:y2, x1:x2].flatten()).argmax()
-                    cv2.putText(displaydepth, str(label).upper(), (x1 + 10, y1 + 10), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
-                    cv2.putText(displaydepth, f"ID: {d['id']}", (x1 + 10, y1 + 20), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
-                    cv2.putText(displaydepth, f"DVAL: {dval}", (x1 + 10, y1 + 30), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
-                    cv2.rectangle(displaydepth, (x1, y1), (x2, y2), color, cv2.FONT_HERSHEY_SIMPLEX)
+                    #dval = np.bincount(monodepth[y1:y2, x1:x2].flatten()).argmax()
+                    #cv2.putText(displaydepth, str(label).upper(), (x1 + 10, y1 + 10), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+                    #cv2.putText(displaydepth, f"ID: {d['id']}", (x1 + 10, y1 + 20), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+                    #cv2.putText(displaydepth, f"DVAL: {dval}", (x1 + 10, y1 + 30), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+                    #cv2.rectangle(displaydepth, (x1, y1), (x2, y2), color, cv2.FONT_HERSHEY_SIMPLEX)
 
                     cv2.putText(frame, f"X: {d['x']/10} cm", (x1 + 10, y1 + 20), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
                     cv2.putText(frame, f"Y: {d['y']/10} cm", (x1 + 10, y1 + 30), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
@@ -164,11 +164,13 @@ def run(pipeline, input_width, input_height, FPS, bd=None):
                     #os.system(cmd)
 
             cv2.putText(frame, "NN fps: {:.2f}".format(fps), (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color)
-            display = cv2.hconcat([frame, displaydepth])
-            cv2.imshow("tracker", display)
+            #display = cv2.hconcat([frame, displaydepth])
+            #cv2.imshow("tracker", display)
+            cv2.imshow("tracker", frame)
             
             # output the frame
-            out.write(display)
+            #out.write(display)
+            out.write(frame)
             #logger.info("writing frame")
 
             if cv2.waitKey(1) == ord('q'):

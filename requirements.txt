@@ -10,3 +10,4 @@ matplotlib
 tf2onnx==1.5.6
 onnx==1.6.0
 onnx-tf==1.5.0
+opencv-contrib-python

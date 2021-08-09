@@ -4,26 +4,16 @@ import cv2
 import math
 import os
 from logger import logger
-
-def getDoorMesage(coords):
-    horiz = "left" if coords.x<100 else "right" if coords.x>100 else None
-    if horiz:
-        return f"Bus door is located {round(coords.z/40)} steps to your front and about {round(coords.x/40)} steps to your {horiz}."
-    else:
-        return f"Bus door is located {round(coords.z/40)} steps to your front."
-
-def getBusMessage(coords):
-    pass
-
+import time
 
 class AlertService:
     ALERT_MODES = {
-        0: "Bus Stop",
-        1: "Bus",
-        2: "Bus Door",
+        0: "Sleep",
+        1: "Bus Stop",
+        2: "Person",
         3: "Road",
-        4: "Person",
-        5: "Sleep"
+        4: "Bus",
+        5: "Busdoor"
     }
 
     def __init__(self, fps = 10, duration = 60, gap = 1):
@@ -40,18 +30,24 @@ class AlertService:
         self.depth = None
         self.frame = None
         self.pframe = None
-        self.resetOrientation()
         self.sift = cv2.xfeatures2d.SIFT_create()
         self.bf = cv2.BFMatcher(cv2.NORM_L1, crossCheck=True)
-        self.alertmode = 1 # BUS
-        self.tellMode()
+        self.alertmode = 0 # SLEEP
         self.message = ""
-        self.messagedelivered = False
+        self.lastmodeclick = time.clock()
+        self.resetFlags()
+        self.tellMode()
+        self.resetOrientation()
 
-    def sayMessage(self, must=False):
-        if must or not self.messagedelivered:
-            self.speak(self.message)
-            self.messagedelivered = True
+    def resetFlags(self):
+        self.incomingsearch = 0
+        self.followdoor = 0
+        self.busdetection = 0
+        self.busstopdetection = 0
+        self.persondetection = 0
+
+    def sayMessage(self):
+        self.speak(self.message)
 
     def updateMessage(self, message):
         self.message = message
@@ -59,6 +55,7 @@ class AlertService:
     def resetOrientation(self):
         self.hangle = 0
         self.vangle = 0
+        self.sayMessage()
 
     def angle(self, v1, v2):
         s = -1 if v2<v1 else 1
@@ -119,7 +116,7 @@ class AlertService:
             self.busDoorStaus()
         elif self.alertmode == 3:
             self.roadStatus()
-        else:
+        elif self.alertmode==4:
             self.personStatus()
 
         self.iteration += 1
@@ -127,27 +124,31 @@ class AlertService:
     def getAlertMode(self):
         return self.ALERT_MODES[self.alertmode]
 
-    def nextMode(self):
-        self.alertmode = (self.alertmode+1)%len(self.ALERT_MODES)
+    def __changeMode(self, increment=1):
+        t = time.clock()
+        diff = t - self.lastmodeclick 
+        self.lastmodeclick = t
+        if diff < 10:
+            self.alertmode = (len(self.ALERT_MODES) + self.alertmode + increment)%len(self.ALERT_MODES)
+            self.resetFlags()
+
         self.tellMode()
-        self.resetOrientation()
+
+    def nextMode(self):
+        self.__changeMode(1)
 
     def prevMode(self):
-        self.alertmode = (len(self.ALERT_MODES) + self.alertmode-1)%len(self.ALERT_MODES)
-        self.tellMode()
-        self.resetOrientation()
+        self.__changeMode(-1)
 
     def tellMode(self):
         mode = self.getAlertMode()
-        if mode=='Sleep':
-            self.speak("Now going to sleep")
-        else:
-            self.speak(f"Now detecting {mode}")
+        self.speak(f"{mode} mode")
 
     def speak(self, message):
-        cmd = f'pico2wave -w speech.wav "{message}" | aplay'
-        logger.info(message)
-        os.system(cmd) 
+        if message.strip():
+            cmd = f'pico2wave -w speech.wav "{message}" | aplay'
+            logger.info(message)
+            os.system(cmd) 
 
     def busStatus(self):
         history = self.gap*self.fps
@@ -156,7 +157,7 @@ class AlertService:
             nearestbus = self.__nearestbus()
             # if nearestbus is not None:
             #     print("NEAREST", nearestbus)
-            if nearestbus:
+            if nearestbus is not None:
                 # find from history this bus id
                 prev = self.record.peek(-history, nearestbus["bus"]["id"])
                 
@@ -172,31 +173,48 @@ class AlertService:
                     #print(id, p["depth"], c["depth"])
                     if p["depth"] - c["depth"] > 0.8:
                         self.message =  f"A bus is approaching at a distance of {c['depth']*2} steps."
-                    elif p["depth"] - c["depth"] < -0.8:
-                        self.message = f"A bus is leaving"
-                    else:
-                        self.message = f"A Bus is standing in front of you at less than {c['depth']*2} steps."
-                    self.resetOrientation()
+                        if self.busdetection==0:
+                            self.busdetection = 1
+                            self.resetOrientation()
+                        
+                    # elif p["depth"] - c["depth"] < -0.8:
+                    #     self.message = f"A bus is leaving"
+                    elif abs(p["depth"] - c["depth"])<=0.5:
+                        if self.busdetection<2:
+                            self.busdetection = 2
+                            self.message = f"A Bus is standing in front of you at less than {c['depth']*2} steps."
+                            self.resetOrientation()
 
             else:
-                self.message = "No bus found yet. Ensure you are facing the road with incoming direction"
+                self.message = "No bus found. Try facing the incoming direction."
+                self.busdetection=0
 
     def busDoorStaus(self, bus):
         """
         From the nearest bus locate the door and tell about the direction
         """
         nearestbus = self.__nearestbus()
+        if nearestbus is None:
+            self.message = "No bus is there"
+            return
+
         door = nearestbus.get(6, False) or nearestbus.get(8, False)
         if not door:
-            self.message = "No door found from current view. Slowly turn a little left and right"
+            self.message = "No door found. Turn a little left or right"
+            if self.followdoor==1:
+                self.sayMessage()
+            self.followdoor = 0
         else:
-            self.resetOrientation()
             x = door['x']
             self.message = f"Door is in your front."
             if x<100:
                 self.message = f"{self.message} Slightly turn left"
             elif x>100:
                 self.message = f"{self.message} Slightly turn right"
+
+            if not self.followdoor:
+                self.resetOrientation()
+                self.followdoor = 1
 
     #TODO: GPS based later
     def busStopStatus(self):
@@ -206,15 +224,30 @@ class AlertService:
         nearestbusstop = self.__nearestEntity("busstop")
         if nearestbusstop is not None:
             self.message = "There is a busstop in front of you"
-            self.resetOrientation()
+            if self.busstopdetection==0:
+                self.resetOrientation()
+                self.busstopdetection = 1
         else:
             self.message = "No busstop found. Turn around slowly to locate."
+            if self.busstopdetection==1:
+                if abs(self.hangle)>10:
+                    d = "left" if self.hangle<0 else "right"
+                    self.message(f"turn a little {d} to find the bus stop.")
+                self.sayMessage()
+            self.busstopdetection = 0
 
     #TODO: compass and GPS can be used here later.
     def roadStatus(self):
         """
         check for road status, may be we need to remember the road and direct turn accordingly
         """
+
+        if self.incomingsearch==3:
+            if abs(self.hangle)>10:
+                d = "left" if self.hangle<0 else "right"
+                self.message(f"turn a little {d} to follow incoming bus direction.")
+            return
+            
         nearestvehicle = self.__nearestEntity("vehicle")
         roadfound = False
         if nearestvehicle is not None:
@@ -226,10 +259,24 @@ class AlertService:
             if mean > 4000 and mode>5000:
                 roadfound = True
         if roadfound:
-            self.message("You are facing the road. Turn right till you dont see road and then turn left.")
-            self.resetOrientation()
+            if not self.incomingsearch:
+                self.message("Road found. Slowly turn right until no road detected.")
+                self.incomingsearch = 1
+                self.resetOrientation()
+            elif self.incomingsearch==2:
+                self.message("Stay in this direction. Switch to bus mode.")
+                self.resetOrientation()
+                self.incomingsearch = 3
+            else:
+                self.message("Slowly turn right until no road detected.")
         else:
-            self.message("You are not facing the road. Turn around slowly to detect.")
+            if self.incomingsearch == 1:
+                self.message("Slowly turn left until road is found.")
+                if self.incomingsearch==1:
+                    self.sayMessage()
+                    self.incomingsearch = 2
+            else:
+                self.message("You are not facing the road. Turn around slowly.")
 
     def personStatus(self):
         """
@@ -247,7 +294,13 @@ class AlertService:
                 self.message = f"{self.message}. Turn little to left"
             elif x>100:
                 self.message = f"{self.message}. Turn little to right"
-            self.resetOrientation()
+
+            if not self.persondetection:
+                self.resetOrientation()
+                self.persondetection = 1
+        else:
+            self.message = "No person found. Turn around to check."
+            self.persondetection = 0
 
 
         

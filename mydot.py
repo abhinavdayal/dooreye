@@ -5,6 +5,7 @@ import argparse
 from pathlib import Path
 import os
 import tracker
+from alertservice import AlertService
 
 nnPathDefault = str((Path(__file__).parent / Path('nn/custom_mobilenet/frozen_inference_graph.blob')).resolve().absolute())
 
@@ -23,12 +24,13 @@ input_width = args.input_width
 input_height = args.input_height
 fullFrameTracking = args.full_frame
 nnPath = args.nnPath
+alertService = AlertService(fps = fps, duration = 60, gap = 1)
 
 pipeline = tracker.setupPipeline(nnPath, fullFrameTracking, input_width, input_height, fps)
 # clean the run
 os.system("rm run/*")
 
-bd = BlueDot(print_messages=True)
+bd = BlueDot(print_messages=True, cols=1, rows=3)
 outfilecnt = 0
 def onBluetoothConnect():
     global bd
@@ -53,5 +55,23 @@ bd.set_when_client_disconnects(onBluetoothDisconnect)
 
 # bd.when_pressed = start_dai
 # bd.when_released = stop_dai
+
+
+def on_prev():
+    global alertService
+    alertService.nextMode()
+
+def on_next():
+    global alertService
+    alertService.prevMode()
+
+def on_speak():
+    global alertService
+    alertService.sayMessage()
+
+
+bd[0,0].when_pressed = on_prev
+bd[1,0].when_pressed = on_next
+bd[2,0].when_pressed = on_speak
 
 pause()

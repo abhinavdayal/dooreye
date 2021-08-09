@@ -8,6 +8,7 @@ import numpy as np
 import time
 import csv
 from deduplicator import findunique, FilterObjectsByBus, areatheshold
+
 #from monoculardepth.inference import MonocularDepth
 
 labelMap = ["NONE", "auto", "bus", "bus stop", "car", "driver door", "front door", "person", "rear door", "route", "truck", "two wheeler"]
@@ -17,7 +18,7 @@ def setupPipeline(nnPath, fullFrameTracking, input_width, input_height, FPS):
     # Create pipeline
     pipeline = dai.Pipeline()
     confidence_threshold = 0.05
-    bus_confidence_threshold = 0.6
+    bus_confidence_threshold = 0.5
 
     # Define sources and outputs
     camRgb = pipeline.createColorCamera()
@@ -230,7 +231,7 @@ def run(pipeline, input_width, input_height, FPS, alerts, outfilecnt=0, bd=None)
                 "busstop": [o for o in objects if o["label"]==3 and o["confidence"]>0.2]
             }
 
-            
+            #TODO: comment display by a flag
 
             if detections:
                 for d in detections:

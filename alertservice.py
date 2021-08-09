@@ -3,6 +3,7 @@ import numpy as np
 import cv2
 import math
 import os
+import subprocess
 from logger import logger
 import time
 
@@ -32,7 +33,7 @@ class AlertService:
         self.pframe = None
         self.sift = cv2.xfeatures2d.SIFT_create()
         self.bf = cv2.BFMatcher(cv2.NORM_L1, crossCheck=True)
-        self.alertmode = 0 # SLEEP
+        self.alertmode = 5 # SLEEP
         self.message = ""
         self.lastmodeclick = time.clock()
         self.resetFlags()
@@ -190,7 +191,9 @@ class AlertService:
         if message.strip():
             cmd = f'pico2wave -w speech.wav "{message}" | aplay'
             logger.info(message)
-            os.system(cmd) 
+            #subprocess.Popen(['pico2wave', '-w', 'speech.wav', f'"{message}"', '|', 'aplay'])
+            subprocess.Popen(cmd, shell=True)
+            # os.system(cmd) 
 
     def busStatus(self):
         history = self.gap*self.fps

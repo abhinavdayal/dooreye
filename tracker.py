@@ -125,10 +125,12 @@ def displayRect(frame, csvwriter, d, fcounter, key):
         cv2.putText(frame, f"ID: {d['id']}", (x1 + 10, y1 + 60), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
         cv2.putText(frame, f"Distance: {d['depth']:0.2f} m", (x1 + 10, y1 + 70), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
         cv2.putText(frame, d["status"], (x1 + 10, y1 + 80), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
-        csvwriter.writerow([fcounter, d['id'], str(label).upper(), d["confidence"], x1, y1, x2, y2, d['x'], d["y"], d["z"], round(d['depth'], 2)])
+        csvwriter.writerow([fcounter, d['id'], str(label).upper(), d["confidence"], x1, y1, x2, y2, d['x'], d["y"], d["z"], round(d['depth'])])
     elif key=='bus': # if not a bus
         cv2.putText(frame, f"BUSID: {d['busid']}", (x1 + 10, y1 + 60), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
         csvwriter.writerow([fcounter, d['busid'], str(label).upper(), d["confidence"], x1, y1, x2, y2, d['x'], d["y"], d["z"], 0])
+    else:
+        csvwriter.writerow([fcounter, 0, str(label).upper(), d["confidence"], x1, y1, x2, y2, d['x'], d["y"], d["z"], round(d['depth']), 0])
 
     #cmd = f'pico2wave -w speech.wav "{str(label)} is located 10 centimeter to your left and 100 centimeter in front" | aplay'
     #os.system(cmd)

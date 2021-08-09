@@ -142,6 +142,7 @@ class AlertService:
             self.alertmode = (len(self.ALERT_MODES) + self.alertmode + increment)%len(self.ALERT_MODES)
             self.resetFlags()
 
+        self.message = f"In {self.getAlertMode()} mode"
         self.tellMode()
 
     def nextMode(self):
@@ -242,7 +243,7 @@ class AlertService:
             if self.busstopdetection==1:
                 if abs(self.hangle)>10:
                     d = "left" if self.hangle<0 else "right"
-                    self.message(f"turn a little {d} to find the bus stop.")
+                    self.message = f"turn a little {d} to find the bus stop."
                 self.sayMessage()
             self.busstopdetection = 0
 
@@ -255,7 +256,7 @@ class AlertService:
         if self.incomingsearch==3:
             if abs(self.hangle)>10:
                 d = "left" if self.hangle<0 else "right"
-                self.message(f"turn a little {d} to follow incoming bus direction.")
+                self.message =f"turn a little {d} to follow incoming bus direction."
             return
             
         nearestvehicle = self.__nearestEntity("vehicle")
@@ -270,23 +271,23 @@ class AlertService:
                 roadfound = True
         if roadfound:
             if not self.incomingsearch:
-                self.message("Road found. Slowly turn right until no road detected.")
+                self.message= f"Road found. Slowly turn right until no road detected."
                 self.incomingsearch = 1
                 self.resetOrientation()
             elif self.incomingsearch==2:
-                self.message("Stay in this direction. Switch to bus mode.")
+                self.message = "Stay in this direction. Switch to bus mode."
                 self.resetOrientation()
                 self.incomingsearch = 3
             else:
-                self.message("Slowly turn right until no road detected.")
+                self.message = "Slowly turn right until no road detected."
         else:
             if self.incomingsearch == 1:
-                self.message("Slowly turn left until road is found.")
+                self.message = "Slowly turn left until road is found."
                 if self.incomingsearch==1:
                     self.sayMessage()
                     self.incomingsearch = 2
             else:
-                self.message("You are not facing the road. Turn around slowly.")
+                self.message = "You are not facing the road. Turn around slowly."
 
     def personStatus(self):
         """
@@ -298,14 +299,14 @@ class AlertService:
             # person found
             z = int(nearestperson["z"]/1000)
             d = int(nearestperson["depth"])
-            self.message(f"There is a person about {d*2} steps in front.")
+            self.message = f"There is a person about {d*2} steps in front."
             x = nearestperson["x"]
             if x<100:
                 self.message = f"{self.message}. Turn little to left"
             elif x>100:
                 self.message = f"{self.message}. Turn little to right"
 
-            if not self.persondetection:
+            if self.persondetection == 0:
                 self.resetOrientation()
                 self.persondetection = 1
         else:

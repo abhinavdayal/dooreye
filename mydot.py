@@ -39,7 +39,12 @@ def onBluetoothConnect():
     global alertService
     logger.info("Door Eye Armed")
     outfilecnt += 1
-    tracker.run(pipeline, input_width, input_height, fps, alertService, outfilecnt, bd)
+    try:
+        tracker.run(pipeline, input_width, input_height, fps, alertService, outfilecnt, bd)
+    except Exception as e:
+        cmd = f'pico2wave -w speech.wav "Program exited due to some error" | aplay'
+        logger.error(str(e))
+        os.system(cmd)
 
 def onBluetoothDisconnect():
     logger.info("Door Eye Disarmed")

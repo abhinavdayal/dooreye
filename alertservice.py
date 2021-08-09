@@ -1,8 +1,8 @@
 from queue import Queue
 import numpy as np
-import cv2
+#import cv2
 import math
-import os
+#import os
 import subprocess
 from logger import logger
 import time
@@ -31,8 +31,8 @@ class AlertService:
         self.depth = None
         self.frame = None
         self.pframe = None
-        self.sift = cv2.xfeatures2d.SIFT_create()
-        self.bf = cv2.BFMatcher(cv2.NORM_L1, crossCheck=True)
+        #self.sift = cv2.xfeatures2d.SIFT_create()
+        #self.bf = cv2.BFMatcher(cv2.NORM_L1, crossCheck=True)
         self.alertmode = 3 # SLEEP
         self.message = ""
         self.lastmodeclick = time.clock()
@@ -62,28 +62,28 @@ class AlertService:
         s = -1 if v2<v1 else 1
         return s*math.asin(abs(v2 - v1)/self.F)*180/math.pi
 
-    def updateOrientation(self):
-        prev = self.pframe
-        img = self.frame
+    # def updateOrientation(self):
+    #     prev = self.pframe
+    #     img = self.frame
 
-        if prev is not None:
-            try:
-                keypoints_1, descriptors_1 = self.sift.detectAndCompute(prev,None)
-                keypoints_2, descriptors_2 = self.sift.detectAndCompute(img,None)
-                matches = self.bf.match(descriptors_1,descriptors_2)
-                smallest_match = min(matches, key = lambda x:x.distance)
-                #img3 = cv2.drawMatches(prev, keypoints_1, img, keypoints_2, matches[:50], img, flags=2)
-                #cv2.imshow("sift", img3)
-                #for match in matches:
-                p1 = keypoints_1[smallest_match.queryIdx].pt
-                p2 = keypoints_2[smallest_match.trainIdx].pt
-                hangle = self.angle(p1[0], p2[0])
-                vangle = self.angle(p1[1], p2[1])
-                self.hangle += hangle
-                self.vangle += vangle
-                #print("D:",smallest_match.distance, "Horizontal:", int(p2[0] - p1[0]), "Vertical:", int(p2[1] - p1[1]), "hangle:", self.hangle, "vangle", self.vangle)
-            except:
-                pass
+    #     if prev is not None:
+    #         try:
+    #             keypoints_1, descriptors_1 = self.sift.detectAndCompute(prev,None)
+    #             keypoints_2, descriptors_2 = self.sift.detectAndCompute(img,None)
+    #             matches = self.bf.match(descriptors_1,descriptors_2)
+    #             smallest_match = min(matches, key = lambda x:x.distance)
+    #             #img3 = cv2.drawMatches(prev, keypoints_1, img, keypoints_2, matches[:50], img, flags=2)
+    #             #cv2.imshow("sift", img3)
+    #             #for match in matches:
+    #             p1 = keypoints_1[smallest_match.queryIdx].pt
+    #             p2 = keypoints_2[smallest_match.trainIdx].pt
+    #             hangle = self.angle(p1[0], p2[0])
+    #             vangle = self.angle(p1[1], p2[1])
+    #             self.hangle += hangle
+    #             self.vangle += vangle
+    #             #print("D:",smallest_match.distance, "Horizontal:", int(p2[0] - p1[0]), "Vertical:", int(p2[1] - p1[1]), "hangle:", self.hangle, "vangle", self.vangle)
+    #         except:
+    #             pass
         
     def __nearestEntity(self, entity):
         objects = self.record.top()
@@ -128,7 +128,7 @@ class AlertService:
             b = self.__nearestbus1(r)
             if b is not None:
                 return b, i
-        return None
+        return None, None
 
     def __nearestbus_history_door(self, gap):
         history = self.fps*gap

@@ -17,7 +17,7 @@ labelMap = ["NONE", "auto", "bus", "bus stop", "car", "driver door", "front door
 def setupPipeline(nnPath, fullFrameTracking, input_width, input_height, FPS):
     # Create pipeline
     pipeline = dai.Pipeline()
-    confidence_threshold = 0.05
+    confidence_threshold = 0.1
     bus_confidence_threshold = 0.4
 
     # Define sources and outputs

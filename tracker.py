@@ -169,6 +169,8 @@ def run(pipeline, input_width, input_height, FPS, alerts, outfilecnt=0, bd=None)
         # if bd is not None:
         #     logger.info(f"Bluedot pressed = {bd.is_pressed}, Bluedot connected = {bd.is_connected}, Bluedot running = {bd.running}")
         while bd.is_connected if bd else True:
+            if alerts.getAlertMode() == "Sleep":
+                continue
             imgFrame = preview.get()
             track = tracklets.get()
             in_nn = q_nn.get()

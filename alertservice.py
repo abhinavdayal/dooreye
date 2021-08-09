@@ -190,7 +190,7 @@ class AlertService:
     def speak(self, message):
         if message.strip():
             cmd = f'pico2wave -w speech.wav "{message}" | aplay'
-            logger.info(message)
+            logger.info(f"frame-{self.iteration}:{message}")
             #subprocess.Popen(['pico2wave', '-w', 'speech.wav', f'"{message}"', '|', 'aplay'])
             subprocess.Popen(cmd, shell=True)
             # os.system(cmd) 

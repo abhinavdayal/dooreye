@@ -200,7 +200,7 @@ class AlertService:
                 self.message = "No bus found. Try facing the incoming direction."
                 self.busdetection=0
 
-    def busDoorStaus(self, bus):
+    def busDoorStaus(self):
         """
         From the nearest bus locate the door and tell about the direction
         """

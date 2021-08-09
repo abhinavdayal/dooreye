@@ -18,7 +18,7 @@ def setupPipeline(nnPath, fullFrameTracking, input_width, input_height, FPS):
     # Create pipeline
     pipeline = dai.Pipeline()
     confidence_threshold = 0.05
-    bus_confidence_threshold = 0.5
+    bus_confidence_threshold = 0.4
 
     # Define sources and outputs
     camRgb = pipeline.createColorCamera()

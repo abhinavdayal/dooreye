@@ -107,17 +107,27 @@ class AlertService:
         self.depth = depth
         self.pframe = self.frame
         self.frame = frame
-        self.updateOrientation()
-        if self.alertmode == 0:
+        #self.updateOrientation() # this is causing more lag
+        """
+        0: "Sleep",
+        1: "Bus Stop",
+        2: "Person",
+        3: "Road",
+        4: "Bus",
+        5: "Busdoor"
+        """
+        if self.alertmode == 1:
             self.busStopStatus()
-        elif self.alertmode == 1:
+        elif self.alertmode == 4:
             self.busStatus()
-        elif self.alertmode == 2:
+        elif self.alertmode == 5:
             self.busDoorStaus()
         elif self.alertmode == 3:
             self.roadStatus()
-        elif self.alertmode==4:
+        elif self.alertmode == 2:
             self.personStatus()
+        else:
+            self.message = "Enable another mode"
 
         self.iteration += 1
 

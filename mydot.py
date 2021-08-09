@@ -35,9 +35,10 @@ outfilecnt = 0
 def onBluetoothConnect():
     global bd
     global outfilecnt
+    global alertService
     logger.info("Door Eye Armed")
     outfilecnt += 1
-    tracker.run(pipeline, input_width, input_height, fps, outfilecnt, bd)
+    tracker.run(pipeline, input_width, input_height, fps, alertService, outfilecnt, bd)
 
 def onBluetoothDisconnect():
     logger.info("Door Eye Disarmed")

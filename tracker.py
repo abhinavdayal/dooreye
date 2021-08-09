@@ -111,23 +111,36 @@ def displayRect(frame, csvwriter, d, fcounter, key):
     except:
         label = d["label"]
 
-    lcolor = (255,255,255)
-    lscale = 0.4
+    lcolor = { # BGR format
+        1: (95, 181, 255), 
+        2: (58,72,255), 
+        3: (99, 31, 158), 
+        4: (133, 167, 7), 
+        5: (159, 187, 10),
+        6:(47, 214, 255), 
+        7:(29, 30, 200), 
+        8:(205, 161, 23), 
+        9: (40, 90, 240), 
+        11: (58, 72, 255), 
+        10:(20, 96, 122)}
+    lscale = 0.3
     
-    cv2.rectangle(frame, (x1, y1), (x2, y2), lcolor, cv2.FONT_HERSHEY_SIMPLEX)
-    cv2.putText(frame, str(label).upper(), (x1 + 10, y1 + 10), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
-    cv2.putText(frame, f"Confidence: {d['confidence']}", (x1 + 10, y1 + 20), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
-    cv2.putText(frame, f"X: {d['x']/10} cm", (x1 + 10, y1 + 30), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
-    cv2.putText(frame, f"Y: {d['y']/10} cm", (x1 + 10, y1 + 40), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
-    cv2.putText(frame, f"Z: {d['z']/10} cm", (x1 + 10, y1 + 50), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+    cv2.rectangle(frame, (x1, y1), (x2, y2), lcolor[d["label"]], cv2.FONT_HERSHEY_SIMPLEX)
+    (w, h), _ = cv2.getTextSize(str(label).title(), cv2.FONT_HERSHEY_SIMPLEX, lscale, 1)
+    cv2.rectangle(frame, (x1, y1-20), (x1+w, y1), lcolor[d["label"]], -1)
+    cv2.putText(frame, str(label).title(), (x1, y1-5), cv2.FONT_HERSHEY_SIMPLEX, lscale, (255, 255, 255))
+    #cv2.putText(frame, f"Confidence: {d['confidence']}", (x1 + 10, y1 + 20), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+    #cv2.putText(frame, f"X: {d['x']/10} cm", (x1 + 10, y1 + 30), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+    #cv2.putText(frame, f"Y: {d['y']/10} cm", (x1 + 10, y1 + 40), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+    #cv2.putText(frame, f"Z: {d['z']/10} cm", (x1 + 10, y1 + 50), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
     
     if d["label"]==2: # if bus
-        cv2.putText(frame, f"ID: {d['id']}", (x1 + 10, y1 + 60), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
-        cv2.putText(frame, f"Distance: {d['depth']:0.2f} m", (x1 + 10, y1 + 70), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
-        cv2.putText(frame, d["status"], (x1 + 10, y1 + 80), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+        #cv2.putText(frame, f"ID: {d['id']}", (x1 + 10, y1 + 60), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+        #cv2.putText(frame, f"Distance: {d['depth']:0.2f} m", (x1 + 10, y1 + 70), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+        #cv2.putText(frame, d["status"], (x1 + 10, y1 + 80), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
         csvwriter.writerow([fcounter, d['id'], str(label).upper(), d["confidence"], x1, y1, x2, y2, d['x'], d["y"], d["z"], round(d['depth'])])
     elif key=='bus': # if not a bus
-        cv2.putText(frame, f"BUSID: {d['busid']}", (x1 + 10, y1 + 60), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
+        #cv2.putText(frame, f"BUSID: {d['busid']}", (x1 + 10, y1 + 60), cv2.FONT_HERSHEY_TRIPLEX, lscale, lcolor)
         csvwriter.writerow([fcounter, d['busid'], str(label).upper(), d["confidence"], x1, y1, x2, y2, d['x'], d["y"], d["z"], 0])
     else:
         csvwriter.writerow([fcounter, 0, str(label).upper(), d["confidence"], x1, y1, x2, y2, d['x'], d["y"], d["z"], round(d['depth']), 0])
@@ -248,23 +261,36 @@ def run(pipeline, input_width, input_height, FPS, alerts, outfilecnt=0, bd=None)
             }
 
             #TODO: comment display by a flag
-
+            app_mode = alerts.getAlertMode()
+            """
+            0: "Sleep",
+            1: "Bus Stop",
+            2: "Person",
+            3: "Road",
+            4: "Bus",
+            5: "Bus Door"
+            """
             if detections:
                 for d in detections:
                     calc_depth(d)
-                    displayRect(frame, csvwriter, d, fcounter, "bus")
+                    if (app_mode == "Bus" or app_mode=="Bus Door"):
+                        displayRect(frame, csvwriter, d, fcounter, "bus")
             for key in objects:
                 if key == "bus":
-                    for d in [items[1] for v in objects[key].items() if v[0]!='bus' for items in v[1].items()]: # flattened list of bus objects
-                        displayRect(frame, csvwriter, d, fcounter, key)
+                    if app_mode == "Bus" or app_mode=="Bus Door":
+                        for d in [items[1] for v in objects[key].items() if v[0]!='bus' for items in v[1].items()]: # flattened list of bus objects
+                            displayRect(frame, csvwriter, d, fcounter, key)
                 else:
                     for d in objects[key]:
                         calc_depth(d)
-                        displayRect(frame, csvwriter, d, fcounter, key) # TODO customize
+                        if (app_mode == "Person" and d["label"]==7) \
+                            or (app_mode == "Road" and d["label"] in [1,4,11])\
+                            or (app_mode == "Bus Stop" and d["label"] == 3):
+                            displayRect(frame, csvwriter, d, fcounter, key) # TODO customize 
                     
 
             alerts.process(objects, imgFrame.getCvFrame(), in_depth.getFrame() if in_depth is not None else None)
-            cv2.putText(frame, "F: {:d}, fps: {:.2f}".format(fcounter, fps), (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color)
+            cv2.putText(frame, "F: {:d}, fps: {:.2f}".format(fcounter, fps), (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.3, color)
             #display = cv2.hconcat([frame, displaydepth])
             #cv2.imshow("tracker", display)
             cv2.imshow("tracker", frame)

@@ -14,7 +14,7 @@ class AlertService:
         2: "Person",
         3: "Road",
         4: "Bus",
-        5: "Busdoor"
+        5: "Bus Door"
     }
 
     def __init__(self, fps = 10, duration = 60, gap = 1):
@@ -33,7 +33,7 @@ class AlertService:
         self.pframe = None
         #self.sift = cv2.xfeatures2d.SIFT_create()
         #self.bf = cv2.BFMatcher(cv2.NORM_L1, crossCheck=True)
-        self.alertmode = 3 # SLEEP
+        self.alertmode = 2 # SLEEP
         self.message = ""
         self.lastmodeclick = time.clock()
         self.resetFlags()
@@ -161,7 +161,7 @@ class AlertService:
         2: "Person",
         3: "Road",
         4: "Bus",
-        5: "Busdoor"
+        5: "Bus Door"
         """
         if self.alertmode == 1:
             self.busStopStatus()

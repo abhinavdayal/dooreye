@@ -71,7 +71,7 @@ def on_speak():
 
 
 bd[0,0].when_pressed = on_prev
-bd[1,0].when_pressed = on_next
-bd[2,0].when_pressed = on_speak
+bd[0,1].when_pressed = on_next
+bd[0,2].when_pressed = on_speak
 
 pause()

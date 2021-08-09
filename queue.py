@@ -35,6 +35,12 @@ class Queue:
         except:
             return None
 
+    def fetch(self, index):
+        try:
+            return self.queue[index]
+        except:
+            return None
+
     # Display  the queue
     def display(self):
         print(self.queue)

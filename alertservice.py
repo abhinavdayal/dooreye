@@ -95,15 +95,46 @@ class AlertService:
 
     def __nearestbus(self):
         objects = self.record.top()
+        return self.__nearestbus1(objects)
+
+    def __nearestbus1(self, objects):
         nearestbus = None
         for _, bus in objects["bus"].items():
             bus["bus"]["area"] = (bus["bus"]['maxy']-bus["bus"]['miny'])*(bus["bus"]['maxx']- bus["bus"]['minx'])
-            if not nearestbus or nearestbus["bus"]["area"]<bus["bus"]["area"]:
+            if nearestbus is None or nearestbus["bus"]["area"]<bus["bus"]["area"]:
                 nearestbus = bus
         return nearestbus
 
+    def __nearestbus_history(self, gap):
+        history = self.fps*gap
+        for i in range(-1, -history, -1):
+            r = self.record.fetch(i)
+            b = self.__nearestbus1(r)
+            if b is not None:
+                return b
+        return None
+
+    def __nearestbus_history_door(self, gap):
+        history = self.fps*gap
+        for i in range(-1, -history, -1):
+            r = self.record.fetch(i)
+            if r is None:
+                return None
+            b = self.__nearestbus1(r)
+            #print(i)
+            if b is not None:
+                door = b.get(6, False) or b.get(8, False)
+                #print(b)
+                if door:
+                    return door
+        return None
+
+
     def process(self, objects, frame, depth):
+        #print("processing", self.iteration)
         self.record.enqueue(objects)
+        #print(self.record.fetch(-1))
+        #print(self.record.fetch(-2))
         self.depth = depth
         self.pframe = self.frame
         self.frame = frame
@@ -204,13 +235,14 @@ class AlertService:
         """
         From the nearest bus locate the door and tell about the direction
         """
-        nearestbus = self.__nearestbus()
-        if nearestbus is None:
-            self.message = "No bus is there"
-            return
+        # nearestbus = self.__nearestbus()
+        # if nearestbus is None:
+        #     self.message = "No bus is there"
+        #     return
 
-        door = nearestbus.get(6, False) or nearestbus.get(8, False)
-        if not door:
+        door = self.__nearestbus_history_door(3)
+
+        if door is None:
             self.message = "No door found. Turn a little left or right"
             if self.followdoor==1:
                 self.sayMessage()
@@ -218,9 +250,9 @@ class AlertService:
         else:
             x = door['x']
             self.message = f"Door is in your front."
-            if x<100:
+            if x<-1000:
                 self.message = f"{self.message} Slightly turn left"
-            elif x>100:
+            elif x>1000:
                 self.message = f"{self.message} Slightly turn right"
 
             if not self.followdoor:

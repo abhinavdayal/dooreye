@@ -183,7 +183,7 @@ class AlertService:
                     p = prev["bus"]
                     #print(id, p["depth"], c["depth"])
                     if p["depth"] - c["depth"] > 0.8:
-                        self.message =  f"A bus is approaching at a distance of {c['depth']*2} steps."
+                        self.message =  f"A bus is approaching at a distance of {int(c['depth']*2)} steps."
                         if self.busdetection==0:
                             self.busdetection = 1
                             self.resetOrientation()
@@ -193,7 +193,7 @@ class AlertService:
                     elif abs(p["depth"] - c["depth"])<=0.5:
                         if self.busdetection<2:
                             self.busdetection = 2
-                            self.message = f"A Bus is standing in front of you at less than {c['depth']*2} steps."
+                            self.message = f"A Bus is standing in front of you at less than {int(c['depth']*2)} steps."
                             self.resetOrientation()
 
             else:

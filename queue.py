@@ -17,9 +17,21 @@ class Queue:
             return None
         return self.queue.pop(0)
 
-    def peek(self, index):
+    def top(self):
+        if self.size()>0:
+            return self.queue[-1]
+        else:
+            return None
+
+    def peek(self, index, busid):
         try:
-            return self.queue[index]
+            result = None
+            for i in range(index, -self.size(), -1):
+                if busid in self.queue[i]["bus"]:
+                    #print("RETURNING", busid, i, self.queue[i]["bus"][busid])
+                    result = self.queue[i]["bus"][busid]
+                    break
+            return result
         except:
             return None
 

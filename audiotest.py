@@ -1,6 +1,6 @@
 import os
 import subprocess
-out = subprocess.Popen(['pactl', 'list', 'sinks'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+#out = subprocess.Popen(['pactl', 'list', 'sinks'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 #stdout, stderr = out.communicate()
 #print("State: RUNNING" in str(stdout))
 

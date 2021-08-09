@@ -93,6 +93,10 @@ def setupPipeline(nnPath, fullFrameTracking, input_width, input_height, FPS):
     spatialDetectionNetwork.out.link(objectTracker.inputDetections)
     stereo.depth.link(spatialDetectionNetwork.inputDepth)
 
+    xout_depth = pipeline.createXLinkOut()
+    xout_depth.setStreamName("depth")
+    stereo.depth.link(xout_depth.input)
+
     return pipeline
 
 def displayRect(frame, csvwriter, d, fcounter, key):
@@ -128,10 +132,16 @@ def displayRect(frame, csvwriter, d, fcounter, key):
     #cmd = f'pico2wave -w speech.wav "{str(label)} is located 10 centimeter to your left and 100 centimeter in front" | aplay'
     #os.system(cmd)
 
+def calc_depth(d):
+    H = {1:1.4, 2:2.7, 4:1.5, 7:1.5, 10:3, 11: 1}
+    F = 350
+    p = d['maxy'] - d['miny']
+    caliberated_depth = H.get(d['label'], 0)*F/p
+    d["depth"] = caliberated_depth
+
 def run(pipeline, input_width, input_height, FPS, alerts, outfilecnt=0, bd=None):
     #bus_confidence_threshold = 0.6
-    H = 2.7
-    F = 350
+    
     #global monocularDepth
     # Connect to device and start pipeline
     with dai.Device(pipeline) as device:
@@ -139,6 +149,7 @@ def run(pipeline, input_width, input_height, FPS, alerts, outfilecnt=0, bd=None)
         preview = device.getOutputQueue("preview", 4, False)
         tracklets = device.getOutputQueue("tracklets", 20, False)
         q_nn = device.getOutputQueue("nn", 30, False)
+        q_depth = device.getOutputQueue("depth", 4, False)
 
         startTime = time.monotonic()
         counter = 0
@@ -158,6 +169,7 @@ def run(pipeline, input_width, input_height, FPS, alerts, outfilecnt=0, bd=None)
             imgFrame = preview.get()
             track = tracklets.get()
             in_nn = q_nn.get()
+            in_depth = q_depth.get()
 
             counter+=1
             fcounter += 1
@@ -166,8 +178,8 @@ def run(pipeline, input_width, input_height, FPS, alerts, outfilecnt=0, bd=None)
                 fps = counter / (current_time - startTime)
                 counter = 0
                 startTime = current_time
-
             frame = imgFrame.getCvFrame()
+            #turns.process(frame)
             #monodepth = monocularDepth.run_inference(frame)
             #displaydepth = cv2.applyColorMap(monodepth, cv2.COLORMAP_MAGMA)
             trackletsData = track.tracklets
@@ -222,10 +234,7 @@ def run(pipeline, input_width, input_height, FPS, alerts, outfilecnt=0, bd=None)
 
             if detections:
                 for d in detections:
-                    if (d['label']==2):
-                            p = d['maxy'] - d['miny']
-                            caliberated_depth = (H*F)/p
-                            d["depth"] = caliberated_depth
+                    calc_depth(d)
                     displayRect(frame, csvwriter, d, fcounter, "bus")
             for key in objects:
                 if key == "bus":
@@ -233,10 +242,11 @@ def run(pipeline, input_width, input_height, FPS, alerts, outfilecnt=0, bd=None)
                         displayRect(frame, csvwriter, d, fcounter, key)
                 else:
                     for d in objects[key]:
+                        calc_depth(d)
                         displayRect(frame, csvwriter, d, fcounter, key) # TODO customize
                     
 
-            alerts.process(objects)
+            alerts.process(objects, imgFrame.getCvFrame(), in_depth.getFrame())
             cv2.putText(frame, "F: {:d}, fps: {:.2f}".format(fcounter, fps), (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color)
             #display = cv2.hconcat([frame, displaydepth])
             #cv2.imshow("tracker", display)
@@ -257,6 +267,7 @@ def run(pipeline, input_width, input_height, FPS, alerts, outfilecnt=0, bd=None)
 if __name__ == "__main__":
     from pathlib import Path
     from alertservice import AlertService
+    #from turnservice import TurnService
     nnPath = str((Path(__file__).parent / Path('nn/custom_mobilenet/frozen_inference_graph.blob')).resolve().absolute())
     fps = 10
     input_width = 300
@@ -265,4 +276,5 @@ if __name__ == "__main__":
 
     pipeline = setupPipeline(nnPath, fullFrameTracking, input_width, input_height, fps)
     alerts = AlertService()
-    run(pipeline, input_width, input_height, fps, alerts)
+    #turns = TurnService()
+    run(pipeline, input_width, input_height, fps, alerts)#, turns)

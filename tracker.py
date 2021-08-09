@@ -171,10 +171,16 @@ def run(pipeline, input_width, input_height, FPS, alerts, outfilecnt=0, bd=None)
         while bd.is_connected if bd else True:
             if alerts.getAlertMode() == "Sleep":
                 continue
-            imgFrame = preview.get()
-            track = tracklets.get()
-            in_nn = q_nn.get()
-            in_depth = q_depth.get()
+            imgFrame = preview.tryGet()
+
+            if imgFrame is None:
+                continue
+            
+            track = tracklets.tryGet()
+            in_nn = q_nn.tryGet()
+            in_depth = q_depth.tryGet()
+
+           
 
             counter+=1
             fcounter += 1
@@ -187,46 +193,52 @@ def run(pipeline, input_width, input_height, FPS, alerts, outfilecnt=0, bd=None)
             #turns.process(frame)
             #monodepth = monocularDepth.run_inference(frame)
             #displaydepth = cv2.applyColorMap(monodepth, cv2.COLORMAP_MAGMA)
-            trackletsData = track.tracklets
-            # for t in trackletsData:
-            #     print(t.TrackingStatus, t.id, t.label, t.roi, t.spatialCoordinates, t.srcImgDetection.confidence, t.status)
+            if track is not None:
+                trackletsData = track.tracklets
+                # for t in trackletsData:
+                #     print(t.TrackingStatus, t.id, t.label, t.roi, t.spatialCoordinates, t.srcImgDetection.confidence, t.status)
 
-            tracked = []
-            for t in trackletsData:
-                #t.srcImgDetection.confidence>=bus_confidence_threshold and 
-                if t.status.name in ['NEW', 'TRACKED']:
-                    roi = t.roi.denormalize(frame.shape[1], frame.shape[0])
-                    tracked.append(
-                        {
-                            "label": t.label, 
-                            "status": t.status.name, 
-                            "minx": int(roi.topLeft().x), 
-                            "maxx": int(roi.bottomRight().x), 
-                            "maxy": int(roi.bottomRight().y), 
-                            "miny": int(roi.topLeft().y), 
-                            "x":int(t.spatialCoordinates.x), 
-                            "y":int(t.spatialCoordinates.y), 
-                            "z":int(t.spatialCoordinates.z), 
-                            "confidence": round(t.srcImgDetection.confidence, 2),
-                            "id":t.id
-                        }
-                    )
+                tracked = []
+                for t in trackletsData:
+                    #t.srcImgDetection.confidence>=bus_confidence_threshold and 
+                    if t.status.name in ['NEW', 'TRACKED']:
+                        roi = t.roi.denormalize(frame.shape[1], frame.shape[0])
+                        tracked.append(
+                            {
+                                "label": t.label, 
+                                "status": t.status.name, 
+                                "minx": int(roi.topLeft().x), 
+                                "maxx": int(roi.bottomRight().x), 
+                                "maxy": int(roi.bottomRight().y), 
+                                "miny": int(roi.topLeft().y), 
+                                "x":int(t.spatialCoordinates.x), 
+                                "y":int(t.spatialCoordinates.y), 
+                                "z":int(t.spatialCoordinates.z), 
+                                "confidence": round(t.srcImgDetection.confidence, 2),
+                                "id":t.id
+                            }
+                        )
 
-            detections = findunique([t for t in tracked if areatheshold(t)])
-            objects = [{
-                "label": t.label,
-                "minx": int(t.xmin*frame.shape[1]), 
-                "maxx": int(t.xmax*frame.shape[1]), 
-                "miny": int(t.ymin*frame.shape[0]), 
-                "maxy": int(t.ymax*frame.shape[0]), 
-                "x":int(t.spatialCoordinates.x), 
-                "y":int(t.spatialCoordinates.y), 
-                "z":int(t.spatialCoordinates.z), 
-                "confidence": round(t.confidence, 2)
-            } for t in in_nn.detections if t.label in [1,3,4,6,7,8,9,11]]
+                detections = findunique([t for t in tracked if areatheshold(t)])
+            else:
+                detections = []
+            if in_nn is not None:
+                objects = [{
+                    "label": t.label,
+                    "minx": int(t.xmin*frame.shape[1]), 
+                    "maxx": int(t.xmax*frame.shape[1]), 
+                    "miny": int(t.ymin*frame.shape[0]), 
+                    "maxy": int(t.ymax*frame.shape[0]), 
+                    "x":int(t.spatialCoordinates.x), 
+                    "y":int(t.spatialCoordinates.y), 
+                    "z":int(t.spatialCoordinates.z), 
+                    "confidence": round(t.confidence, 2)
+                } for t in in_nn.detections if t.label in [1,3,4,6,7,8,9,11]]
 
-            objects = [t for t in objects if areatheshold(t)]
-            objects = findunique(objects)
+                objects = [t for t in objects if areatheshold(t)]
+                objects = findunique(objects)
+            else:
+                objects = []
             busobjects = FilterObjectsByBus(detections, objects) # bust dict containing its assets
             objects = {
                 "bus": busobjects, 
@@ -251,7 +263,7 @@ def run(pipeline, input_width, input_height, FPS, alerts, outfilecnt=0, bd=None)
                         displayRect(frame, csvwriter, d, fcounter, key) # TODO customize
                     
 
-            alerts.process(objects, imgFrame.getCvFrame(), in_depth.getFrame())
+            alerts.process(objects, imgFrame.getCvFrame(), in_depth.getFrame() if in_depth is not None else None)
             cv2.putText(frame, "F: {:d}, fps: {:.2f}".format(fcounter, fps), (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color)
             #display = cv2.hconcat([frame, displaydepth])
             #cv2.imshow("tracker", display)

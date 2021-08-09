@@ -33,7 +33,7 @@ class AlertService:
         self.pframe = None
         self.sift = cv2.xfeatures2d.SIFT_create()
         self.bf = cv2.BFMatcher(cv2.NORM_L1, crossCheck=True)
-        self.alertmode = 5 # SLEEP
+        self.alertmode = 3 # SLEEP
         self.message = ""
         self.lastmodeclick = time.clock()
         self.resetFlags()
@@ -94,6 +94,21 @@ class AlertService:
                 nearest = v
         return nearest
 
+    def __nearest_history_entity(self, entity, gap):
+        history = self.fps*gap
+        for i in range(-1, -history, -1):
+            r = self.record.fetch(i)
+            if r is None:
+                return None
+            nearest = None
+            for v in r[entity]:
+                v["area"] = (v['maxy']-v['miny'])*(v['maxx']- v['minx'])
+                if not nearest or nearest["area"]<v["area"]:
+                    nearest = v
+            if nearest is not None:
+                return nearest
+        return None
+
     def __nearestbus(self):
         objects = self.record.top()
         return self.__nearestbus1(objects)
@@ -112,7 +127,7 @@ class AlertService:
             r = self.record.fetch(i)
             b = self.__nearestbus1(r)
             if b is not None:
-                return b
+                return b, i
         return None
 
     def __nearestbus_history_door(self, gap):
@@ -199,12 +214,12 @@ class AlertService:
         history = self.gap*self.fps
         if(self.record.size()>history): # gap duration passed
             # find the nearest bus in view
-            nearestbus = self.__nearestbus()
+            nearestbus, i = self.__nearestbus_history(3)
             # if nearestbus is not None:
             #     print("NEAREST", nearestbus)
             if nearestbus is not None:
                 # find from history this bus id
-                prev = self.record.peek(-history, nearestbus["bus"]["id"])
+                prev = self.record.peek(i-history, nearestbus["bus"]["id"])
                 
                 if prev is not None:
                     #print("PREV", prev)
@@ -267,7 +282,7 @@ class AlertService:
         """
         check for bus stops. May be we need to store the last bus stop found as well.
         """
-        nearestbusstop = self.__nearestEntity("busstop")
+        nearestbusstop = self.__nearest_history_entity("busstop", 3)
         if nearestbusstop is not None:
             self.message = "There is a busstop in front of you"
             if self.busstopdetection==0:
@@ -294,12 +309,12 @@ class AlertService:
                 self.message =f"turn a little {d} to follow incoming bus direction."
             return
             
-        nearestvehicle = self.__nearestEntity("vehicle")
+        nearestvehicle = self.__nearest_history_entity("vehicle", 2)
         roadfound = False
         if nearestvehicle is not None:
             roadfound = True
             
-        else:
+        elif self.depth is not None:
             depth_a = self.depth.flatten()
             mean, mode = np.average(depth_a), np.argmax(np.bincount(depth_a))
             if mean > 4000 and mode>5000:
@@ -328,7 +343,7 @@ class AlertService:
         """
         find nearest person
         """
-        nearestperson = self.__nearestEntity("person")
+        nearestperson = self.__nearest_history_entity("person", 3)
 
         if nearestperson is not None:
             # person found

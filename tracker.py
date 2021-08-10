@@ -182,6 +182,17 @@ def run(pipeline, input_width, input_height, FPS, alerts, outfilecnt=0, bd=None)
         # if bd is not None:
         #     logger.info(f"Bluedot pressed = {bd.is_pressed}, Bluedot connected = {bd.is_connected}, Bluedot running = {bd.running}")
         while bd.is_connected if bd else True:
+            wk = cv2.waitKey(1)
+
+            if wk == ord('q'):
+                break
+            elif wk==ord('p'):
+                alerts.prevMode()
+            elif wk==ord('n'):
+                alerts.nextMode()
+            elif wk==ord(' '):
+                alerts.sayMessage()
+
             if alerts.getAlertMode() == "Sleep":
                 continue
             imgFrame = preview.tryGet()
@@ -255,9 +266,9 @@ def run(pipeline, input_width, input_height, FPS, alerts, outfilecnt=0, bd=None)
             busobjects = FilterObjectsByBus(detections, objects) # bust dict containing its assets
             objects = {
                 "bus": busobjects, 
-                "person": [o for o in objects if o["label"]==7 and o["confidence"]>0.2],
-                "vehicle": [o for o in objects if o["label"] in [1,4,11] and o["confidence"]>0.2],
-                "busstop": [o for o in objects if o["label"]==3 and o["confidence"]>0.2]
+                "person": [o for o in objects if o["label"]==7 and o["confidence"]>0.15],
+                "vehicle": [o for o in objects if o["label"] in [1,4,11] and o["confidence"]>0.15],
+                "busstop": [o for o in objects if o["label"]==3 and o["confidence"]>0.15]
             }
 
             #TODO: comment display by a flag
@@ -299,9 +310,7 @@ def run(pipeline, input_width, input_height, FPS, alerts, outfilecnt=0, bd=None)
             #out.write(display)
             out.write(frame)
             #logger.info("writing frame")
-
-            if cv2.waitKey(1) == ord('q'):
-                break
+            
 
         # After we release our webcam, we also release the output
         out.release() 

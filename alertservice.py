@@ -24,6 +24,8 @@ class AlertService:
         gap = minimum, how many seconds to look behind for object tracking
         """
         self.iteration = 0
+        self.stepspm = 1.7
+        self.pastlookup = 2
         self.fps = fps
         self.duration = duration
         self.gap = gap
@@ -148,6 +150,7 @@ class AlertService:
 
     def process(self, objects, frame, depth):
         #print("processing", self.iteration)
+        self.iteration += 1
         self.record.enqueue(objects)
         #print(self.record.fetch(-1))
         #print(self.record.fetch(-2))
@@ -176,7 +179,7 @@ class AlertService:
         else:
             self.message = "Enable another mode"
 
-        self.iteration += 1
+        
 
     def getAlertMode(self):
         return self.ALERT_MODES[self.alertmode]
@@ -214,7 +217,7 @@ class AlertService:
         history = self.gap*self.fps
         if(self.record.size()>history): # gap duration passed
             # find the nearest bus in view
-            nearestbus, i = self.__nearestbus_history(3)
+            nearestbus, i = self.__nearestbus_history(self.pastlookup)
             # if nearestbus is not None:
             #     print("NEAREST", nearestbus)
             if nearestbus is not None:
@@ -231,18 +234,18 @@ class AlertService:
                     c = nearestbus["bus"]
                     p = prev["bus"]
                     #print(id, p["depth"], c["depth"])
-                    if p["depth"] - c["depth"] > 0.8:
-                        self.message =  f"A bus is approaching at a distance of {int(c['depth']*2)} steps."
+                    if p["z"]/1000 - c["z"]/1000 >= 1:
+                        self.message =  f"A bus is approaching at a distance of {int(c['depth']*self.stepspm)} steps."
                         if self.busdetection==0:
                             self.busdetection = 1
                             self.resetOrientation()
                         
                     # elif p["depth"] - c["depth"] < -0.8:
                     #     self.message = f"A bus is leaving"
-                    elif abs(p["depth"] - c["depth"])<=0.5:
+                    elif abs(p["z"]/1000 - c["z"]/1000)<=0.5:
                         if self.busdetection<2:
                             self.busdetection = 2
-                            self.message = f"A Bus is standing in front of you at less than {int(c['depth']*2)} steps."
+                            self.message = f"A Bus is standing in front of you at less than {int(c['depth']*self.stepspm)} steps."
                             self.resetOrientation()
 
             else:
@@ -258,7 +261,7 @@ class AlertService:
         #     self.message = "No bus is there"
         #     return
 
-        door = self.__nearestbus_history_door(3)
+        door = self.__nearestbus_history_door(self.pastlookup)
 
         if door is None:
             self.message = "No door found. Turn a little left or right"
@@ -267,11 +270,14 @@ class AlertService:
             self.followdoor = 0
         else:
             x = door['x']
-            self.message = f"Door is in your front."
-            if x<-1000:
-                self.message = f"{self.message} Slightly turn left"
-            elif x>1000:
-                self.message = f"{self.message} Slightly turn right"
+            z = door['z']
+            steps = int(2*door['z']/1000)
+            self.message = f"Door is in your front about {steps} steps."
+            if z>0:
+                if x/z<0.5:
+                    self.message = f"{self.message} Slightly turn left"
+                elif x/z>0.5:
+                    self.message = f"{self.message} Slightly turn right"
 
             if not self.followdoor:
                 self.resetOrientation()
@@ -282,7 +288,7 @@ class AlertService:
         """
         check for bus stops. May be we need to store the last bus stop found as well.
         """
-        nearestbusstop = self.__nearest_history_entity("busstop", 3)
+        nearestbusstop = self.__nearest_history_entity("busstop", self.pastlookup)
         if nearestbusstop is not None:
             self.message = "There is a busstop in front of you"
             if self.busstopdetection==0:
@@ -309,7 +315,7 @@ class AlertService:
                 self.message =f"turn a little {d} to follow incoming bus direction."
             return
             
-        nearestvehicle = self.__nearest_history_entity("vehicle", 2)
+        nearestvehicle = self.__nearest_history_entity("vehicle", self.pastlookup)
         roadfound = False
         if nearestvehicle is not None:
             roadfound = True
@@ -349,12 +355,13 @@ class AlertService:
             # person found
             z = int(nearestperson["z"]/1000)
             d = int(nearestperson["depth"])
-            self.message = f"There is a person about {d*2} steps in front."
-            x = nearestperson["x"]
-            if x<100:
-                self.message = f"{self.message}. Turn little to left"
-            elif x>100:
-                self.message = f"{self.message}. Turn little to right"
+            self.message = f"There is a person about {int(z*self.stepspm)} steps in front."
+            x = nearestperson["x"]/1000
+            if z>0:
+                if x/z < -0.5:
+                    self.message = f"{self.message}. Turn little to left"
+                elif x/z > 0.5:
+                    self.message = f"{self.message}. Turn little to right"
 
             if self.persondetection == 0:
                 self.resetOrientation()

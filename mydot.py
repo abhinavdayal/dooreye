@@ -29,7 +29,7 @@ alertService = AlertService(fps = fps, duration = 60, gap = 1)
 pipeline = tracker.setupPipeline(nnPath, fullFrameTracking, input_width, input_height, fps)
 # clean the run
 os.system("rm run/*")
-os.system("rm log/*")
+#os.system("rm log/*")
 
 bd = BlueDot(print_messages=True, cols=1, rows=3)
 outfilecnt = 0

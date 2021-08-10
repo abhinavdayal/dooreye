@@ -266,8 +266,8 @@ def run(pipeline, input_width, input_height, FPS, alerts, outfilecnt=0, bd=None)
             busobjects = FilterObjectsByBus(detections, objects) # bust dict containing its assets
             objects = {
                 "bus": busobjects, 
-                "person": [o for o in objects if o["label"]==7 and o["confidence"]>0.15],
-                "vehicle": [o for o in objects if o["label"] in [1,4,11] and o["confidence"]>0.15],
+                "person": [o for o in objects if o["label"]==7 and o["confidence"]>0.4],
+                "vehicle": [o for o in objects if o["label"] in [1,4,11] and o["confidence"]>0.3],
                 "busstop": [o for o in objects if o["label"]==3 and o["confidence"]>0.15]
             }
 

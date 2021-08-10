@@ -195,14 +195,14 @@ def run(pipeline, input_width, input_height, FPS, alerts, outfilecnt=0, bd=None)
 
             if alerts.getAlertMode() == "Sleep":
                 continue
-            imgFrame = preview.tryGet()
+            imgFrame = preview.get()
 
             if imgFrame is None:
                 continue
             
-            track = tracklets.tryGet()
-            in_nn = q_nn.tryGet()
-            in_depth = q_depth.tryGet()
+            track = tracklets.get()
+            in_nn = q_nn.get()
+            in_depth = q_depth.get()
 
            
 

@@ -24,7 +24,7 @@ class AlertService:
         gap = minimum, how many seconds to look behind for object tracking
         """
         self.iteration = 0
-        self.stepspm = 1.7
+        self.stepspm = 2
         self.pastlookup = 2
         self.fps = fps
         self.duration = duration

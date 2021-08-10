@@ -236,6 +236,7 @@ class AlertService:
                     #print(id, p["depth"], c["depth"])
                     if p["z"]/1000 - c["z"]/1000 >= 1:
                         self.message =  f"A bus is approaching at a distance of {int(c['depth']*self.stepspm)} steps."
+                        self.leftrightcheck(c["x"], c["z"])
                         if self.busdetection==0:
                             self.busdetection = 1
                             self.resetOrientation()
@@ -246,11 +247,19 @@ class AlertService:
                         if self.busdetection<2:
                             self.busdetection = 2
                             self.message = f"A Bus is standing in front of you at less than {int(c['depth']*self.stepspm)} steps."
+                            self.leftrightcheck(c["x"], c["z"])
                             self.resetOrientation()
 
             else:
                 self.message = "No bus found. Try facing the incoming direction."
                 self.busdetection=0
+
+    def leftrightcheck(self, x, z):
+        if z>0:
+            if x/z<-0.5:
+                self.message = f"{self.message} Slightly turn left"
+            elif x/z>0.5:
+                self.message = f"{self.message} Slightly turn right"
 
     def busDoorStaus(self):
         """
@@ -273,11 +282,7 @@ class AlertService:
             z = door['z']
             steps = int(2*door['z']/1000)
             self.message = f"Door is in your front about {steps} steps."
-            if z>0:
-                if x/z<0.5:
-                    self.message = f"{self.message} Slightly turn left"
-                elif x/z>0.5:
-                    self.message = f"{self.message} Slightly turn right"
+            self.leftrightcheck(x, z)
 
             if not self.followdoor:
                 self.resetOrientation()
@@ -357,11 +362,7 @@ class AlertService:
             d = int(nearestperson["depth"])
             self.message = f"There is a person about {int(z*self.stepspm)} steps in front."
             x = nearestperson["x"]/1000
-            if z>0:
-                if x/z < -0.5:
-                    self.message = f"{self.message}. Turn little to left"
-                elif x/z > 0.5:
-                    self.message = f"{self.message}. Turn little to right"
+            self.leftrightcheck(x, z)
 
             if self.persondetection == 0:
                 self.resetOrientation()
